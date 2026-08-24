@@ -331,9 +331,27 @@ header.site-header span {
    one consistent "wayfinding pictogram" family distinct from the colored
    room polygons underneath. L.divIcon keeps them a fixed screen size at
    every zoom level, unlike the polygons. */
+/* Leaflet writes its own position transform (translate3d) directly onto
+   this element on every pan/zoom frame - it must not carry a transform of
+   its own, or our CSS transform gets silently overwritten. Sizing only. */
 .feature-icon-badge {
   width: 32px;
   height: 32px;
+  cursor: pointer;
+}
+
+.feature-icon-badge:hover {
+  z-index: 1000 !important;
+}
+
+/* The actual visual badge. Split out from .feature-icon-badge (above)
+   because that outer element is where Leaflet writes its own position
+   transform on every pan/zoom frame - any transform we put there
+   (including hover's scale below) gets silently overwritten by Leaflet's.
+   Icons are pinned at this native size at every zoom level, by design. */
+.feature-icon-inner {
+  width: 100%;
+  height: 100%;
   background: var(--bg);
   border: var(--border);
   border-radius: 50%;
@@ -341,16 +359,14 @@ header.site-header span {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition: transform 0.1s ease;
 }
 
-.feature-icon-badge:hover {
+.feature-icon-badge:hover .feature-icon-inner {
   transform: scale(1.12);
-  z-index: 1000 !important;
 }
 
-.feature-icon-badge img {
+.feature-icon-inner img {
   width: 20px;
   height: 20px;
   object-fit: contain;

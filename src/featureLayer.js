@@ -18,9 +18,14 @@ export function renderFeatures(layerGroup, floorData, { onFeatureClick } = {}) {
       continue;
     }
 
+    // The outer element (className) is the exact DOM node Leaflet writes its
+    // positioning transform to on every pan/zoom - it must stay untouched
+    // (no transform of our own) or it fights with Leaflet's translate3d.
+    // The visual box + zoom-responsive scaling live on the nested
+    // .feature-icon-inner element instead. See styles/main.css.
     const divIcon = L.divIcon({
       className: "feature-icon-badge",
-      html: `<img src="${iconPath}" alt="${labelFor(feature)}" draggable="false" />`,
+      html: `<div class="feature-icon-inner"><img src="${iconPath}" alt="${labelFor(feature)}" draggable="false" /></div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16],
       tooltipAnchor: [0, -16],
