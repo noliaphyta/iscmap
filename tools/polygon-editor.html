@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="color-scheme" content="light" />
+<title>Polygon Editor — Building Map authoring tool</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; background: #0f1521; color: #e2e8f0; }
+  #layout { display: flex; height: 100vh; }
+  #map { flex: 1; background: #0f1521; }
+  #sidebar { width: 340px; padding: 1rem; overflow-y: auto; background: #161d2b; border-left: 1px solid #2a3346; }
+  h2 { font-size: 1rem; margin-top: 0; }
+  p.hint { font-size: 0.8rem; color: #94a3b8; line-height: 1.4; }
+  label { display: block; font-size: 0.8rem; margin: 0.6rem 0 0.2rem; color: #94a3b8; }
+  input, select { width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid #2a3346; background: #0f1521; color: #e2e8f0; box-sizing: border-box; }
+  button { margin-top: 0.7rem; width: 100%; padding: 0.55rem; border-radius: 6px; border: none; background: #f97316; color: #1a0f04; font-weight: 600; cursor: pointer; }
+  button.secondary { background: #2a3346; color: #e2e8f0; }
+  #room-list { margin-top: 1rem; font-size: 0.78rem; }
+  #room-list .room-row { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #2a3346; }
+  #room-list .room-row button { width: auto; padding: 0.1rem 0.5rem; margin: 0; font-size: 0.7rem; }
+  textarea { width: 100%; height: 220px; font-family: monospace; font-size: 0.72rem; background: #0f1521; color: #e2e8f0; border: 1px solid #2a3346; border-radius: 6px; }
+  #point-count { font-size: 0.75rem; color: #f97316; }
+  .mode-tabs { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+  .mode-tabs button { margin-top: 0; background: #2a3346; color: #94a3b8; }
+  .mode-tabs button.active { background: #f97316; color: #1a0f04; }
+  .mode-panel[hidden] { display: none; }
+  .feature-preview { font-size: 0.75rem; color: #f97316; }
+</style>
+</head>
+<body>
+<div id="layout">
+  <div id="map"></div>
+  <div id="sidebar">
+    <h2>Floor plan polygon editor</h2>
+    <p class="hint">
+      1. Paste an image URL/path (or a local file) and load it.<br/>
+      2. Pick a mode below: trace room outlines, or drop point-feature icons
+         (exits, elevators, restrooms, etc).<br/>
+      3. When done, copy each JSON block into the matching array in
+         <code>data/&lt;building&gt;/floorN.json</code> (<code>rooms</code> and
+         <code>features</code> are separate arrays in the same file).
+    </p>
+
+    <div class="mode-tabs">
+      <button id="mode-room" class="active" type="button">Room polygon</button>
+      <button id="mode-feature" type="button">Point feature</button>
+    </div>
+
+    <label>Image path (relative to index.html, or a URL)</label>
+    <input id="image-path" placeholder="assets/floorplans/ISC-3.png" />
+    <label>Image width x height (px)</label>
+    <div style="display:flex; gap:0.4rem;">
+      <input id="img-w" placeholder="width" />
+      <input id="img-h" placeholder="height" />
+    </div>
+    <button id="load-image">Load image</button>
+    <button id="load-local" class="secondary">...or choose a local file instead</button>
+    <input id="file-input" type="file" accept="image/*" style="display:none" />
+
+    <div id="room-mode-panel" class="mode-panel">
+      <p id="point-count">Points traced: 0 (click "Save room" when the outline is closed)</p>
+
+      <label>Room ID</label>
+      <input id="room-id" placeholder="e.g. 2233" />
+      <label>Category</label>
+      <select id="room-category">
+        <option value="building-services">Building Services</option>
+        <option value="circulation">Circulation</option>
+        <option value="classroom-facilities">Classroom Facilities</option>
+        <option value="general-use">General Use</option>
+        <option value="laboratory-facilities">Laboratory Facilities</option>
+        <option value="mechanical">Mechanical</option>
+        <option value="office-facilities">Office Facilities</option>
+        <option value="special-use">Special Use</option>
+        <option value="study-facilities">Study Facilities</option>
+        <option value="support">Support</option>
+        <option value="no-value">No Value</option>
+      </select>
+      <button id="save-room">Save room</button>
+      <button id="undo-point" class="secondary">Undo last point</button>
+      <button id="clear-points" class="secondary">Clear current trace</button>
+
+      <div id="room-list"></div>
+
+      <label>Exported JSON (rooms array)</label>
+      <textarea id="output" readonly></textarea>
+      <button id="copy-json" class="secondary">Copy to clipboard</button>
+    </div>
+
+    <div id="feature-mode-panel" class="mode-panel" hidden>
+      <p class="feature-preview" id="feature-point-status">Click the map to place a point.</p>
+
+      <label>Feature ID</label>
+      <input id="feature-id" placeholder="e.g. F0-EXIT-01" />
+      <label>Type</label>
+      <select id="feature-type">
+        <option value="exit">Exit</option>
+        <option value="elevator">Elevator</option>
+        <option value="stairs">Stairs</option>
+        <option value="restroom">Restroom</option>
+        <option value="cafe">Café</option>
+        <option value="restaurant">Restaurant</option>
+        <option value="study">Study Room</option>
+        <option value="information">Information</option>
+        <option value="lost-and-found">Lost &amp; Found</option>
+        <option value="fire-extinguisher">Fire Extinguisher</option>
+      </select>
+      <label id="feature-direction-label">Direction (exit arrow)</label>
+      <select id="feature-direction">
+        <option value="up">Up</option>
+        <option value="down">Down</option>
+        <option value="left">Left</option>
+        <option value="right">Right</option>
+        <option value="down-left">Down-left</option>
+        <option value="down-right">Down-right</option>
+      </select>
+      <button id="save-feature">Save feature</button>
+      <button id="clear-feature-point" class="secondary">Clear current point</button>
+
+      <div id="feature-list"></div>
+
+      <label>Exported JSON (features array)</label>
+      <textarea id="feature-output" readonly></textarea>
+      <button id="copy-feature-json" class="secondary">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  const map = L.map("map", { crs: L.CRS.Simple, minZoom: -4, maxZoom: 3 });
+  let imageLayer = null;
+  let imgWidth = 0, imgHeight = 0;
+  let currentPoints = []; // [[x,y], ...] in pixel space
+  let currentMarkers = [];
+  let currentLine = null;
+  const savedRooms = []; // {id, category, polygon}
+
+  // --- mode + point-feature state ---
+  let editorMode = "room"; // "room" | "feature"
+  let featurePoint = null; // [x, y] | null
+  let featurePointMarker = null;
+  const savedFeatures = []; // {id, type, point, direction?}
+
+  const roomModeBtn = document.getElementById("mode-room");
+  const featureModeBtn = document.getElementById("mode-feature");
+  const roomPanel = document.getElementById("room-mode-panel");
+  const featurePanel = document.getElementById("feature-mode-panel");
+  const featureTypeSelect = document.getElementById("feature-type");
+  const featureDirectionLabel = document.getElementById("feature-direction-label");
+  const featureDirectionSelect = document.getElementById("feature-direction");
+
+  function setMode(mode) {
+    editorMode = mode;
+    roomModeBtn.classList.toggle("active", mode === "room");
+    featureModeBtn.classList.toggle("active", mode === "feature");
+    roomPanel.hidden = mode !== "room";
+    featurePanel.hidden = mode !== "feature";
+  }
+  roomModeBtn.addEventListener("click", () => setMode("room"));
+  featureModeBtn.addEventListener("click", () => setMode("feature"));
+
+  function updateDirectionVisibility() {
+    const isExit = featureTypeSelect.value === "exit";
+    featureDirectionLabel.style.display = isExit ? "" : "none";
+    featureDirectionSelect.style.display = isExit ? "" : "none";
+  }
+  featureTypeSelect.addEventListener("change", updateDirectionVisibility);
+  updateDirectionVisibility();
+
+  function pixelToLatLng(x, y) { return L.latLng(-y, x); }
+  function latLngToPixel(ll) { return [Math.round(ll.lng), Math.round(-ll.lat)]; }
+
+  function loadImage(url, w, h) {
+    if (imageLayer) map.removeLayer(imageLayer);
+    imgWidth = w; imgHeight = h;
+    const bounds = [pixelToLatLng(0, 0), pixelToLatLng(w, h)];
+    imageLayer = L.imageOverlay(url, bounds).addTo(map);
+    map.fitBounds(bounds);
+  }
+
+  document.getElementById("load-image").addEventListener("click", () => {
+    const url = document.getElementById("image-path").value.trim();
+    const w = parseInt(document.getElementById("img-w").value, 10);
+    const h = parseInt(document.getElementById("img-h").value, 10);
+    if (!url || !w || !h) { alert("Provide an image path and width/height."); return; }
+    loadImage(url, w, h);
+  });
+
+  document.getElementById("load-local").addEventListener("click", () => {
+    document.getElementById("file-input").click();
+  });
+
+  document.getElementById("file-input").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      document.getElementById("img-w").value = img.width;
+      document.getElementById("img-h").value = img.height;
+      loadImage(img.src, img.width, img.height);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  function redrawTrace() {
+    currentMarkers.forEach((m) => map.removeLayer(m));
+    if (currentLine) map.removeLayer(currentLine);
+    currentMarkers = currentPoints.map(([x, y]) =>
+      L.circleMarker(pixelToLatLng(x, y), { radius: 4, color: "#f97316" }).addTo(map)
+    );
+    if (currentPoints.length > 1) {
+      currentLine = L.polygon(currentPoints.map(([x, y]) => pixelToLatLng(x, y)), {
+        color: "#f97316", weight: 2, fillOpacity: 0.15,
+      }).addTo(map);
+    }
+    document.getElementById("point-count").textContent = `Points traced: ${currentPoints.length}`;
+  }
+
+  map.on("click", (e) => {
+    if (!imageLayer) return;
+    if (editorMode === "feature") {
+      featurePoint = latLngToPixel(e.latlng);
+      if (featurePointMarker) map.removeLayer(featurePointMarker);
+      featurePointMarker = L.circleMarker(pixelToLatLng(...featurePoint), {
+        radius: 6, color: "#f97316", fillColor: "#f97316", fillOpacity: 0.9,
+      }).addTo(map);
+      document.getElementById("feature-point-status").textContent =
+        `Point set at (${featurePoint[0]}, ${featurePoint[1]}). Fill in the fields and click "Save feature".`;
+      return;
+    }
+    currentPoints.push(latLngToPixel(e.latlng));
+    redrawTrace();
+  });
+
+  document.getElementById("undo-point").addEventListener("click", () => {
+    currentPoints.pop();
+    redrawTrace();
+  });
+
+  document.getElementById("clear-points").addEventListener("click", () => {
+    currentPoints = [];
+    redrawTrace();
+  });
+
+  function refreshOutput() {
+    document.getElementById("output").value = JSON.stringify(savedRooms, null, 2);
+    const list = document.getElementById("room-list");
+    list.innerHTML = "";
+    savedRooms.forEach((r, i) => {
+      const row = document.createElement("div");
+      row.className = "room-row";
+      row.innerHTML = `<span>${r.id} (${r.category})</span>`;
+      const del = document.createElement("button");
+      del.textContent = "remove";
+      del.addEventListener("click", () => { savedRooms.splice(i, 1); refreshOutput(); });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById("save-room").addEventListener("click", () => {
+    const id = document.getElementById("room-id").value.trim();
+    const category = document.getElementById("room-category").value;
+    if (!id) { alert("Enter a room ID."); return; }
+    if (currentPoints.length < 3) { alert("Trace at least 3 points."); return; }
+    savedRooms.push({ id, category, polygon: currentPoints.slice() });
+    currentPoints = [];
+    document.getElementById("room-id").value = "";
+    redrawTrace();
+    refreshOutput();
+  });
+
+  document.getElementById("copy-json").addEventListener("click", () => {
+    const text = document.getElementById("output").value;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+  });
+
+  // --- point-feature save / list / export (parallel to the room logic above) ---
+  function clearFeaturePoint() {
+    featurePoint = null;
+    if (featurePointMarker) { map.removeLayer(featurePointMarker); featurePointMarker = null; }
+    document.getElementById("feature-point-status").textContent = "Click the map to place a point.";
+  }
+  document.getElementById("clear-feature-point").addEventListener("click", clearFeaturePoint);
+
+  function refreshFeatureOutput() {
+    document.getElementById("feature-output").value = JSON.stringify(savedFeatures, null, 2);
+    const list = document.getElementById("feature-list");
+    list.innerHTML = "";
+    savedFeatures.forEach((f, i) => {
+      const row = document.createElement("div");
+      row.className = "room-row";
+      const suffix = f.direction ? ` → ${f.direction}` : "";
+      row.innerHTML = `<span>${f.id} (${f.type}${suffix})</span>`;
+      const del = document.createElement("button");
+      del.textContent = "remove";
+      del.addEventListener("click", () => { savedFeatures.splice(i, 1); refreshFeatureOutput(); });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById("save-feature").addEventListener("click", () => {
+    const id = document.getElementById("feature-id").value.trim();
+    const type = featureTypeSelect.value;
+    if (!id) { alert("Enter a feature ID."); return; }
+    if (!featurePoint) { alert("Click the map to place the feature's point first."); return; }
+    const feature = { id, type, point: featurePoint.slice() };
+    if (type === "exit") feature.direction = featureDirectionSelect.value;
+    savedFeatures.push(feature);
+    document.getElementById("feature-id").value = "";
+    clearFeaturePoint();
+    refreshFeatureOutput();
+  });
+
+  document.getElementById("copy-feature-json").addEventListener("click", () => {
+    const text = document.getElementById("feature-output").value;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+  });
+</script>
+</body>
+</html>
