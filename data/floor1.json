@@ -22885,6 +22885,40 @@
         2774,
         1197
       ]
+    },
+    {
+      "id": "F1-EXIT-10",
+      "type": "exit",
+      "point": [
+        2653,
+        1168
+      ],
+      "direction": "left"
+    },
+    {
+      "id": "F1-EXIT-11",
+      "type": "exit",
+      "point": [
+        2498,
+        1165
+      ],
+      "direction": "right"
+    },
+    {
+      "id": "F1-STAIRS-09",
+      "type": "stairs",
+      "point": [
+        1383,
+        1656
+      ]
+    },
+    {
+      "id": "F1-STAIRS-10",
+      "type": "stairs",
+      "point": [
+        1755,
+        2224
+      ]
     }
   ]
 }
