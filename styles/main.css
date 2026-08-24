@@ -347,8 +347,14 @@ header.site-header span {
 /* The actual visual badge. Split out from .feature-icon-badge (above)
    because that outer element is where Leaflet writes its own position
    transform on every pan/zoom frame - any transform we put there
-   (including hover's scale below) gets silently overwritten by Leaflet's.
-   Icons are pinned at this native size at every zoom level, by design. */
+   (including the zoom/hover scaling below) gets silently overwritten by
+   Leaflet's.
+   --icon-zoom-scale is written by updateIconScale() in main.js on every
+   'zoom'/'zoomend' event - it interpolates between ICON_MIN_SCALE (at
+   reset/minZoom) and ICON_MAX_SCALE (at maxZoom, native 32px) so icons
+   grow smoothly across the map's whole usable zoom range instead of
+   sitting fixed. Defaults to 1 so the icon still renders at native size
+   before the first zoom event (e.g. very first paint). */
 .feature-icon-inner {
   width: 100%;
   height: 100%;
@@ -359,11 +365,13 @@ header.site-header span {
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: scale(var(--icon-zoom-scale, 1));
+  transform-origin: center center;
   transition: transform 0.1s ease;
 }
 
 .feature-icon-badge:hover .feature-icon-inner {
-  transform: scale(1.12);
+  transform: scale(calc(var(--icon-zoom-scale, 1) * 1.12));
 }
 
 .feature-icon-inner img {

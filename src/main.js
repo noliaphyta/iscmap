@@ -1,4 +1,4 @@
-import { dataPath, imagePath, LANDSCAPE_IMAGE } from "./mapConfig.js";
+import { dataPath, imagePath, LANDSCAPE_IMAGE, ICON_MIN_SCALE, ICON_MAX_SCALE } from "./mapConfig.js";
 import { imageBounds, latLngToPixel } from "./pixelCRS.js";
 import { renderRooms } from "./roomLayer.js";
 import { renderFeatures } from "./featureLayer.js";
@@ -44,8 +44,44 @@ let showLandscape = true; // on by default - the site context reads better than 
 function updateMinZoom(bounds) {
   if (!bounds) return;
   map.setMinZoom(map.getBoundsZoom(bounds, false));
+  updateIconScale(); // minZoom just moved, so the 0%-mark of the scale range moved with it
 }
 window.addEventListener("resize", () => updateMinZoom(currentBounds));
+
+// Feature icons are fixed-pixel divIcon markers (see featureLayer.js), so
+// they don't natively grow/shrink with the map like room polygons do.
+// This linearly interpolates a CSS scale between ICON_MIN_SCALE (at
+// map.getMinZoom(), i.e. the reset/fit view) and ICON_MAX_SCALE (at
+// maxZoom) and writes it to a CSS custom property that styles/main.css's
+// .feature-icon-inner reads. Deliberately keyed off the *live* min/maxZoom
+// rather than a fixed reference zoom number: minZoom is recomputed per
+// floor/viewport by updateMinZoom() above, so anchoring to it here means
+// icons visibly grow across the map's whole usable zoom range instead of
+// only in the last sliver before maxZoom.
+//
+// This can't be pure "same relative size as rooms" (that would mean
+// scaling by 2^zoom, exactly like the room polygons/floor plan image do)
+// because the usable zoom range easily spans 4-6 zoom levels - a true
+// 2^zoom match would make icons either illegibly tiny at reset view or
+// oversized at max zoom. The linear interpolation is a deliberate
+// legibility trade-off: icons still grow every step you zoom in, they
+// just don't grow as fast as the rooms underneath them do.
+function updateIconScale() {
+  const zoom = map.getZoom();
+  const minZ = map.getMinZoom();
+  const maxZ = map.getMaxZoom();
+  // Guards the brief window before the map's initial view is set (e.g. the
+  // updateMinZoom() call inside loadFloor() that runs before the first
+  // fitBounds()), where getZoom() can return undefined.
+  if (!Number.isFinite(zoom) || !Number.isFinite(minZ) || !Number.isFinite(maxZ)) return;
+  const t = maxZ > minZ ? (zoom - minZ) / (maxZ - minZ) : 1;
+  const clampedT = Math.min(1, Math.max(0, t));
+  const scale = ICON_MIN_SCALE + clampedT * (ICON_MAX_SCALE - ICON_MIN_SCALE);
+  map.getContainer().style.setProperty("--icon-zoom-scale", scale.toFixed(3));
+}
+// 'zoom' fires continuously during animated/scroll zoom (smooth scaling);
+// 'zoomend' is a safety net for any programmatic zoom change that skips it.
+map.on("zoom zoomend", updateIconScale);
 
 // Swaps in the current floor's image layer, respecting the landscape
 // toggle. When landscape is on, the floor plan's white background is keyed

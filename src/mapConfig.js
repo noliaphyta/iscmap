@@ -82,3 +82,16 @@ export const LANDSCAPE_IMAGE = "assets/transparentlandscape.png";
 // `features` array in each floor's data/floorN.json, alongside `rooms`.
 // See src/icons.js for the type -> icon registry and src/featureLayer.js
 // for rendering. No separate data path needed - same file as dataPath().
+
+// Feature icons are fixed-pixel L.divIcon markers (see featureLayer.js),
+// not part of the CRS.Simple pixel canvas, so they don't scale with zoom
+// the way room polygons/the floor plan image do. To keep them reading as
+// "roughly the same size relative to the rooms" without letting them
+// shrink to illegible specks at the zoomed-out reset view or balloon into
+// blobs at max zoom, main.js interpolates their CSS scale linearly across
+// the *current* map's actual zoom range (map.getMinZoom() -> maxZoom),
+// not a hardcoded absolute zoom number. Using the live min/maxZoom instead
+// of fixed values means this keeps working correctly as minZoom moves
+// with viewport size (see updateMinZoom() in main.js).
+export const ICON_MIN_SCALE = 0.65; // size at map.getMinZoom() (the reset/fit view)
+export const ICON_MAX_SCALE = 1;    // size at map.getMaxZoom() (32px native)

@@ -2,9 +2,12 @@ import { pixelToLatLng } from "./pixelCRS.js";
 import { iconFor, labelFor } from "./icons.js";
 
 // Renders one floor's point features (exits, elevators, restrooms, cafes,
-// etc.) as fixed-size Leaflet markers. Unlike room polygons these use
-// L.divIcon so they stay a constant pixel size on screen at every zoom
-// level, the way real wayfinding pictograms would.
+// etc.) as Leaflet markers using L.divIcon. Unlike room polygons, these
+// live in screen space rather than the map's CRS.Simple pixel canvas, so
+// Leaflet doesn't scale them with zoom on its own - main.js's
+// updateIconScale() drives a CSS custom property (--icon-zoom-scale, see
+// styles/main.css) on 'zoom'/'zoomend' so they grow/shrink a bit relative
+// to the zoom level, similar to (but gentler than) how the rooms do.
 //
 // Returns the created layers so the caller can clear them when switching
 // floors, matching the renderRooms() contract in roomLayer.js.
