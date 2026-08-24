@@ -27612,5 +27612,159 @@
         ]
       ]
     }
+  ],
+  "features": [
+    {
+      "id": "F2-ELEVATOR-01",
+      "type": "elevator",
+      "point": [
+        2422,
+        1210
+      ]
+    },
+    {
+      "id": "F2-ELEVATOR-02",
+      "type": "elevator",
+      "point": [
+        2750,
+        1434
+      ]
+    },
+    {
+      "id": "F2-ELEVATOR-03",
+      "type": "elevator",
+      "point": [
+        2402,
+        2207
+      ]
+    },
+    {
+      "id": "F2-ELEVATOR-04",
+      "type": "elevator",
+      "point": [
+        1666,
+        2095
+      ]
+    },
+    {
+      "id": "F2-STAIRS-01",
+      "type": "stairs",
+      "point": [
+        2664,
+        1266
+      ]
+    },
+    {
+      "id": "F2-STAIRS-02",
+      "type": "stairs",
+      "point": [
+        1388,
+        1662
+      ]
+    },
+    {
+      "id": "F2-STAIRS-03",
+      "type": "stairs",
+      "point": [
+        1758,
+        2231
+      ]
+    },
+    {
+      "id": "F2-STAIRS-04",
+      "type": "stairs",
+      "point": [
+        3504,
+        2395
+      ]
+    },
+    {
+      "id": "F2-STAIRS-05",
+      "type": "stairs",
+      "point": [
+        3498,
+        1490
+      ]
+    },
+    {
+      "id": "F2-STAIRS-06",
+      "type": "stairs",
+      "point": [
+        2488,
+        1084
+      ]
+    },
+    {
+      "id": "F2-STAIRS-07",
+      "type": "stairs",
+      "point": [
+        2888,
+        1867
+      ]
+    },
+    {
+      "id": "F2-RESTROOM-01",
+      "type": "restroom",
+      "point": [
+        2786,
+        1340
+      ]
+    },
+    {
+      "id": "F2-RESTROOM-02",
+      "type": "restroom",
+      "point": [
+        3342,
+        2299
+      ]
+    },
+    {
+      "id": "F2-RESTROOM-03",
+      "type": "restroom",
+      "point": [
+        2524,
+        2351
+      ]
+    },
+    {
+      "id": "F2-RESTROOM-04",
+      "type": "restroom",
+      "point": [
+        1378,
+        1927
+      ]
+    },
+    {
+      "id": "F2-RESTROOM-05",
+      "type": "restroom",
+      "point": [
+        1436,
+        2019
+      ]
+    },
+    {
+      "id": "F2-STUDY-01",
+      "type": "study",
+      "point": [
+        1564,
+        1867
+      ]
+    },
+    {
+      "id": "F2-STUDY-02",
+      "type": "study",
+      "point": [
+        2776,
+        1217
+      ]
+    },
+    {
+      "id": "F2-STAIRS-08",
+      "type": "stairs",
+      "point": [
+        1560,
+        1138
+      ]
+    }
   ]
 }

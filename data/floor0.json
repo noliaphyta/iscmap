@@ -16191,6 +16191,39 @@
         1335,
         2009
       ]
+    },
+    {
+      "id": "F0-STAIRS-04",
+      "type": "stairs",
+      "point": [
+        2484,
+        1088
+      ]
+    },
+    {
+      "id": "F0-STAIRS-05",
+      "type": "stairs",
+      "point": [
+        1390,
+        1657
+      ]
+    },
+    {
+      "id": "F0-STAIRS-06",
+      "type": "stairs",
+      "point": [
+        1762,
+        2229
+      ]
+    },
+    {
+      "id": "F0-EXIT-03",
+      "type": "exit",
+      "point": [
+        2322,
+        1048
+      ],
+      "direction": "up"
     }
   ]
 }

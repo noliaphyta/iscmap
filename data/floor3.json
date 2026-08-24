@@ -27674,5 +27674,111 @@
         ]
       ]
     }
+  ],
+  "features": [
+    {
+      "id": "F3-RESTROOM-01",
+      "type": "restroom",
+      "point": [
+        1370,
+        1931
+      ]
+    },
+    {
+      "id": "F3-RESTROOM-02",
+      "type": "restroom",
+      "point": [
+        1428,
+        2025
+      ]
+    },
+    {
+      "id": "F3-RESTROOM-03",
+      "type": "restroom",
+      "point": [
+        2788,
+        1338
+      ]
+    },
+    {
+      "id": "F3-RESTROOM-04",
+      "type": "restroom",
+      "point": [
+        2478,
+        2345
+      ]
+    },
+    {
+      "id": "F3-ELEVATOR-01",
+      "type": "elevator",
+      "point": [
+        1658,
+        2095
+      ]
+    },
+    {
+      "id": "F3-ELEVATOR-02",
+      "type": "elevator",
+      "point": [
+        2398,
+        2203
+      ]
+    },
+    {
+      "id": "F3-ELEVATOR-03",
+      "type": "elevator",
+      "point": [
+        2426,
+        1214
+      ]
+    },
+    {
+      "id": "F3-STAIRS-01",
+      "type": "stairs",
+      "point": [
+        3506,
+        2405
+      ]
+    },
+    {
+      "id": "F3-STAIRS-02",
+      "type": "stairs",
+      "point": [
+        2484,
+        2457
+      ]
+    },
+    {
+      "id": "F3-STAIRS-03",
+      "type": "stairs",
+      "point": [
+        2482,
+        1080
+      ]
+    },
+    {
+      "id": "F3-STAIRS-04",
+      "type": "stairs",
+      "point": [
+        2664,
+        1260
+      ]
+    },
+    {
+      "id": "F3-STAIRS-05",
+      "type": "stairs",
+      "point": [
+        1376,
+        1660
+      ]
+    },
+    {
+      "id": "F3-STAIRS-06",
+      "type": "stairs",
+      "point": [
+        1744,
+        2229
+      ]
+    }
   ]
 }

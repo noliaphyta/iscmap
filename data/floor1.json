@@ -22644,5 +22644,247 @@
         ]
       ]
     }
+  ],
+  "features": [
+    {
+      "id": "F1-RESTROOM-01",
+      "type": "restroom",
+      "point": [
+        2783,
+        1338
+      ]
+    },
+    {
+      "id": "F1-RESTROOM-02",
+      "type": "restroom",
+      "point": [
+        1378,
+        1925
+      ]
+    },
+    {
+      "id": "F1-RESTROOM-03",
+      "type": "restroom",
+      "point": [
+        1430,
+        2016
+      ]
+    },
+    {
+      "id": "F1-RESTROOM-04",
+      "type": "restroom",
+      "point": [
+        2516,
+        2345
+      ]
+    },
+    {
+      "id": "F1-RESTROOM-05",
+      "type": "restroom",
+      "point": [
+        3342,
+        2291
+      ]
+    },
+    {
+      "id": "F1-CAFE-01",
+      "type": "cafe",
+      "point": [
+        3104,
+        1945
+      ]
+    },
+    {
+      "id": "F1-EXIT-01",
+      "type": "exit",
+      "point": [
+        2634,
+        1911
+      ],
+      "direction": "up"
+    },
+    {
+      "id": "F1-EXIT-03",
+      "type": "exit",
+      "point": [
+        3524,
+        1867
+      ],
+      "direction": "right"
+    },
+    {
+      "id": "F1-EXIT-04",
+      "type": "exit",
+      "point": [
+        3526,
+        1450
+      ],
+      "direction": "up"
+    },
+    {
+      "id": "F1-EXIT-05",
+      "type": "exit",
+      "point": [
+        3426,
+        2405
+      ],
+      "direction": "down"
+    },
+    {
+      "id": "F1-EXIT-06",
+      "type": "exit",
+      "point": [
+        2320,
+        2461
+      ],
+      "direction": "down"
+    },
+    {
+      "id": "F1-EXIT-07",
+      "type": "exit",
+      "point": [
+        2090,
+        2307
+      ],
+      "direction": "up"
+    },
+    {
+      "id": "F1-EXIT-08",
+      "type": "exit",
+      "point": [
+        1654,
+        1802
+      ],
+      "direction": "up"
+    },
+    {
+      "id": "F1-EXIT-09",
+      "type": "exit",
+      "point": [
+        1184,
+        2121
+      ],
+      "direction": "down-left"
+    },
+    {
+      "id": "F1-STAIRS-01",
+      "type": "stairs",
+      "point": [
+        2666,
+        1266
+      ]
+    },
+    {
+      "id": "F1-STAIRS-02",
+      "type": "stairs",
+      "point": [
+        3484,
+        1512
+      ]
+    },
+    {
+      "id": "F1-STAIRS-03",
+      "type": "stairs",
+      "point": [
+        3508,
+        2389
+      ]
+    },
+    {
+      "id": "F1-STAIRS-04",
+      "type": "stairs",
+      "point": [
+        2472,
+        2457
+      ]
+    },
+    {
+      "id": "F1-STAIRS-05",
+      "type": "stairs",
+      "point": [
+        1676,
+        1973
+      ]
+    },
+    {
+      "id": "F1-ELEVATOR-01",
+      "type": "elevator",
+      "point": [
+        1666,
+        2095
+      ]
+    },
+    {
+      "id": "F1-ELEVATOR-02",
+      "type": "elevator",
+      "point": [
+        2426,
+        1210
+      ]
+    },
+    {
+      "id": "F1-ELEVATOR-03",
+      "type": "elevator",
+      "point": [
+        2750,
+        1430
+      ]
+    },
+    {
+      "id": "F1-ELEVATOR-04",
+      "type": "elevator",
+      "point": [
+        2396,
+        2205
+      ]
+    },
+    {
+      "id": "F1-STAIRS-06",
+      "type": "stairs",
+      "point": [
+        1548,
+        1132
+      ]
+    },
+    {
+      "id": "F1-STAIRS-07",
+      "type": "stairs",
+      "point": [
+        2482,
+        1086
+      ]
+    },
+    {
+      "id": "F1-STAIRS-08",
+      "type": "stairs",
+      "point": [
+        2912,
+        1859
+      ]
+    },
+    {
+      "id": "F1-STUDY-01",
+      "type": "study",
+      "point": [
+        2906,
+        1965
+      ]
+    },
+    {
+      "id": "F1-STUDY-02",
+      "type": "study",
+      "point": [
+        2430,
+        2347
+      ]
+    },
+    {
+      "id": "F1-STUDY-03",
+      "type": "study",
+      "point": [
+        2774,
+        1197
+      ]
+    }
   ]
 }
