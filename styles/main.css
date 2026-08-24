@@ -23,6 +23,7 @@ html, body {
 #app {
   position: relative;
   height: 100vh;
+  height: 100dvh; /* real visible viewport on mobile - 100vh includes the collapsing address bar and pushes bottom-docked panels off screen */
   width: 100vw;
   overflow: hidden;
 }
@@ -41,7 +42,7 @@ header.site-header {
   display: flex;
   align-items: baseline;
   gap: 0.7rem;
-  padding: 1.1rem 1.3rem;
+  padding: calc(1.1rem + env(safe-area-inset-top)) 1.3rem 1.1rem calc(1.3rem + env(safe-area-inset-left));
   pointer-events: none;
 }
 
@@ -77,8 +78,8 @@ header.site-header span {
 /* --- corner control cluster --- */
 #controls {
   position: absolute;
-  top: 1.1rem;
-  right: 1.1rem;
+  top: calc(1.1rem + env(safe-area-inset-top));
+  right: calc(1.1rem + env(safe-area-inset-right));
   z-index: 600;
   display: flex;
   flex-direction: column;
@@ -138,7 +139,7 @@ header.site-header span {
   border-radius: 0;
   color: var(--ink);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 1rem; /* iOS Safari auto-zooms the whole page on focus for inputs under 16px */
   font-weight: 500;
   letter-spacing: 0.05em;
   padding: 0.65rem 0.8rem;
@@ -251,7 +252,7 @@ header.site-header span {
 /* --- error banner --- */
 .error-banner {
   position: absolute;
-  top: 1.1rem;
+  top: calc(1.1rem + env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 900;
@@ -269,8 +270,8 @@ header.site-header span {
 /* --- info panel (bottom-left) --- */
 #info-panel {
   position: absolute;
-  bottom: 1.1rem;
-  left: 1.1rem;
+  bottom: calc(1.1rem + env(safe-area-inset-bottom));
+  left: calc(1.1rem + env(safe-area-inset-left));
   z-index: 600;
   min-width: 200px;
   max-width: 260px;
@@ -363,8 +364,8 @@ header.site-header span {
    it doesn't permanently eat map space on small screens. */
 .legend-panel {
   position: absolute;
-  bottom: 1.1rem;
-  right: 1.1rem;
+  bottom: calc(1.1rem + env(safe-area-inset-bottom));
+  right: calc(1.1rem + env(safe-area-inset-right));
   z-index: 600;
   display: flex;
   flex-direction: column;
