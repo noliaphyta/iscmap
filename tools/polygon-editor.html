@@ -149,7 +149,10 @@
       2. Trace room outlines or drop point-feature icons. Click a saved
       room to edit it in place (drag its points, splice in a fix, or
       merge it with another room).<br/>
-      3. Copy the JSON below into <code>data/floorN.json</code>, or use
+      3. Copy the JSON below into <code>data/source/floorN.json</code> (NOT
+      <code>data/floorN.json</code> - that's the live, public copy the app
+      actually fetches, and room data lands there only after it's been
+      verified - see <code>data/source/README.md</code>), or use
       "Download floor JSON" for the whole file at once.
     </p>
 
@@ -506,10 +509,16 @@ function resetEditorStateForNewFloor() {
 }
 
 // Loads a floorplan image and, when a floor number can be detected,
-// fetches the matching data/floorN.json and pre-populates savedRooms/
-// savedFeatures with it (rendered via the app's own renderRooms/
-// renderFeatures, not reimplemented here) so the exported JSON reflects
-// the whole floor from the start.
+// fetches the matching data/source/floorN.json and pre-populates
+// savedRooms/savedFeatures with it (rendered via the app's own
+// renderRooms/renderFeatures, not reimplemented here) so the exported JSON
+// reflects the whole floor from the start.
+//
+// Reads from data/source/, not the public data/floorN.json - this tool is
+// for authoring room data before it's been verified, and data/floorN.json
+// is the file the live app actually fetches (see data/source/README.md).
+// Editing against the source copy means in-progress tracing work never
+// accidentally ends up served to real users.
 async function loadFloorplan({ hintUrl, floorNum, preferDataImage }) {
   resetEditorStateForNewFloor();
   currentFloor = floorNum;
@@ -517,10 +526,10 @@ async function loadFloorplan({ hintUrl, floorNum, preferDataImage }) {
   let data = null;
   if (floorNum !== null) {
     try {
-      const res = await fetch(`data/floor${floorNum}.json`);
+      const res = await fetch(`data/source/floor${floorNum}.json`);
       if (res.ok) data = await res.json();
     } catch (err) {
-      console.warn(`No existing data for floor ${floorNum} (or fetch failed):`, err);
+      console.warn(`No existing source data for floor ${floorNum} (or fetch failed):`, err);
     }
   }
 

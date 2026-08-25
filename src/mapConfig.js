@@ -1,13 +1,29 @@
 // Central place to declare what floors exist.
 // To add a real floor: drop the image in assets/floorplans/ as ISC-N.png,
 // add it to FLOORPLAN_IMAGES in tools/polygon-editor.html so it shows up in
-// the editor's dropdown, add data/floorN.json (see tools/polygon-editor.html
-// to trace room polygons), then list the floor number in FLOORS below.
+// the editor's dropdown, add data/source/floorN.json (see
+// tools/polygon-editor.html to trace room polygons, and data/source/README.md
+// for why rooms are authored there instead of the public data/ files), then
+// list the floor number in FLOORS below.
 
 // Floor 4 is intentionally left out until assets/floorplans/ISC-4.png and
 // data/floor4.json exist - listing a floor with no matching data/image
 // makes its button a dead click. Add 4 back in once both files are ready.
 export const FLOORS = [0, 1, 2, 3];
+
+// All four floors have traced room polygons, but they were traced against
+// a since-replaced floor plan export and haven't been re-verified against
+// the current assets/floorplans/ISC-N.png images - see data/source/README.md.
+// Until a floor's rooms are verified and published (tools/publish-rooms.py)
+// into the public data/floorN.json files, this stays false and the app
+// falls back to the color-probe stopgap (src/colorProbe.js) for category
+// info instead of the real room-polygon layer.
+//
+// Single source of truth - every consumer of room data (room rendering in
+// main.js, search indexing in search.js) reads this rather than each
+// deciding independently, so there's one place data trust is declared, not
+// several places that can drift out of sync with each other.
+export const ROOMS_ENABLED = false;
 
 // Palette matches the "Space Category" legend key. Colors are a more
 // aesthetic, harmonized re-interpretation of the key's swatches (which are

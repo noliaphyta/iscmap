@@ -1,6 +1,7 @@
-import { dataPath, imagePath, LANDSCAPE_IMAGE, ICON_MIN_SCALE, ICON_MAX_SCALE } from "./mapConfig.js";
-import { imageBounds, latLngToPixel } from "./pixelCRS.js";
+import { dataPath, imagePath, LANDSCAPE_IMAGE, ICON_MIN_SCALE, ICON_MAX_SCALE, ROOMS_ENABLED } from "./mapConfig.js";
+import { imageBounds, latLngToPixel, pixelToLatLng } from "./pixelCRS.js";
 import { renderRooms } from "./roomLayer.js";
+import { renderRoomDots } from "./roomDotLayer.js";
 import { renderFeatures } from "./featureLayer.js";
 import { labelFor } from "./icons.js";
 import { createControlPanel } from "./floorControl.js";
@@ -8,12 +9,6 @@ import { createLegend } from "./legend.js";
 import { buildSearchIndex, createSearchBox } from "./search.js";
 import { getTransparentFloorImage } from "./landscapeLayer.js";
 import { getFloorPixelData, matchCategoryAt } from "./colorProbe.js";
-
-// Room polygons aren't traced yet (see README "Known limitations") - every
-// floor's `rooms` array is currently empty, so this is a no-op today, but
-// flip this back on the moment real polygons land rather than deleting the
-// call. Until then, src/colorProbe.js stands in for category detection.
-const ROOMS_ENABLED = false;
 
 const map = L.map("map", {
   crs: L.CRS.Simple,
@@ -26,10 +21,17 @@ const map = L.map("map", {
 let currentImageLayer = null;
 let currentLandscapeLayer = null;
 let currentRoomLayerGroup = L.layerGroup().addTo(map);
+// Separate from currentRoomLayerGroup (which holds the traced room
+// polygons, only rendered while ROOMS_ENABLED is true - see mapConfig.js).
+// Dot search is independent of that flag: it's driven by OCR'd room-number
+// labels (data/floorN.json's "labels" array), not the unverified polygons,
+// so it works whether or not the polygon layer is switched on.
+let currentDotLayerGroup = L.layerGroup().addTo(map);
 let currentFeatureLayerGroup = L.layerGroup().addTo(map);
 let currentFloor = 2;
 let hasFit = false;
-let pendingHighlight = null; // room id to highlight after the next load
+let pendingHighlight = null; // room id to highlight after the next load (polygons)
+let pendingDotHighlight = null; // room_number to show a dot for after the next load
 let currentBounds = null; // bounds of the floor currently on screen, for the reset-view button
 let currentRawImageSrc = null; // last floor's plain image src, so the landscape toggle can re-render without a refetch
 let showLandscape = true; // on by default - the site context reads better than a bare white background
@@ -183,7 +185,11 @@ function updateInfoPanelFromLatLng(latlng) {
   if (ROOMS_ENABLED || !currentPixelData) return;
   const { x, y } = latLngToPixel(latlng);
   const category = matchCategoryAt(currentPixelData, x, y);
-  if (!category) {
+  // "no-value" is a real, confident color match (it's in SWATCH_COLORS so
+  // it doesn't get confused with an actual category) - it just means
+  // "empty floor plan background," which isn't information worth
+  // surfacing to the user. Treat it the same as no match at all.
+  if (!category || category === "no-value") {
     updateInfoPanel(null);
     return;
   }
@@ -247,6 +253,12 @@ async function loadFloor(floor) {
       });
   }
 
+  currentDotLayerGroup.clearLayers();
+  renderRoomDots(currentDotLayerGroup, data, { highlightId: pendingDotHighlight });
+  if (pendingDotHighlight) {
+    updateInfoPanel({ room_number: pendingDotHighlight, floor });
+  }
+
   currentFeatureLayerGroup.clearLayers();
   renderFeatures(currentFeatureLayerGroup, data, {
     onFeatureClick: (feature) => updateInfoPanel(feature),
@@ -260,14 +272,24 @@ async function loadFloor(floor) {
   }
 
   pendingHighlight = null;
+  pendingDotHighlight = null;
 }
 
-// Handles room polygons (category + id), point features (type field), and
-// the color-hover stopgap (category only, no id yet - see
-// updateInfoPanelFromLatLng) since any of the three can populate this panel.
+// Handles room polygons (category + id, only while ROOMS_ENABLED), point
+// features (type field), the color-hover stopgap (category only, no id -
+// see updateInfoPanelFromLatLng), and a room found via dot search
+// (room_number field, from roomDotLayer.js / search.js) - any of these can
+// populate this panel.
 function updateInfoPanel(item) {
   if (!item) {
-    infoPanel.innerHTML = `<p class="info-empty">Click a room to see details here.</p>`;
+    infoPanel.innerHTML = `<p class="info-empty">Search for a room, or hover the floor plan to see a category here.</p>`;
+    return;
+  }
+  if (item.room_number) {
+    infoPanel.innerHTML = `
+      <h3>${item.room_number}</h3>
+      <p class="info-category">Floor ${item.floor}</p>
+    `;
     return;
   }
   if (item.category && item.id) {
@@ -291,16 +313,16 @@ function updateInfoPanel(item) {
 }
 
 // --- search wiring ---
+// Search runs against OCR'd room-number labels (see search.js), not the
+// traced-but-unverified room polygons - so this works regardless of
+// ROOMS_ENABLED, and always resolves to a single dot via roomDotLayer.js.
 buildSearchIndex().then((index) => {
   const searchBox = createSearchBox({
     index,
     onSelect: (match) => {
-      pendingHighlight = match.id;
+      pendingDotHighlight = match.id;
       loadFloor(match.floor).then(() => {
-        const layer = currentRoomLayerGroup
-          .getLayers()
-          .find((l) => l.getTooltip && l.getTooltip()?.getContent() === match.id);
-        if (layer) map.fitBounds(layer.getBounds(), { maxZoom: 1 });
+        map.setView(pixelToLatLng(match.x, match.y), 1);
       });
     },
   });

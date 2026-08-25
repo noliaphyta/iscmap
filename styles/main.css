@@ -32,6 +32,14 @@ html, body {
   position: absolute;
   inset: 0;
   background: var(--bg);
+  /* Mobile browsers can still hijack a two-finger pinch as a native
+     page-zoom gesture even with <meta viewport user-scalable=no> - many
+     browsers (iOS Safari 10+ especially) ignore that directive for
+     accessibility reasons. touch-action: none tells the browser "don't
+     run any of your own gesture handling here," which IS reliably
+     respected, so Leaflet's own TouchZoom handler is the only thing that
+     reacts to the pinch and only the map zooms, not the whole page. */
+  touch-action: none;
 }
 
 header.site-header {
@@ -54,11 +62,27 @@ header.site-header h1 {
   color: var(--ink);
 }
 
-header.site-header span {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: var(--ink-dim);
+/* The header itself is pointer-events: none so its padding doesn't block
+   map dragging underneath - the link needs pointer-events: auto to opt
+   itself back in. Padding + negative margin grows the tap target past the
+   visual text (mobile touch-target sizing) without shifting layout. */
+header.site-header h1 a {
+  pointer-events: auto;
+  display: inline-block;
+  padding: 0.6rem 0.7rem;
+  margin: -0.6rem -0.7rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+header.site-header h1 a:hover,
+header.site-header h1 a:focus-visible {
+  text-decoration: underline;
+}
+
+header.site-header h1 a:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 /* Leaflet's default zoom control sits top-left, same corner as the site
@@ -380,6 +404,41 @@ header.site-header span {
   object-fit: contain;
   pointer-events: none;
   user-select: none;
+}
+
+/* --- room target marker (OCR-detected room location) ---
+   Shown only for the one room currently searched/selected - see
+   roomDotLayer.js. Not a persistent per-room marker layer; a floor plan
+   with a few hundred OCR'd rooms showing dots all the time was too
+   visually noisy, so this renders at most one marker at a time. */
+.room-dot {
+  cursor: pointer;
+}
+
+.room-dot__pulse {
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 2px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--ink);
+}
+
+.room-dot--highlighted .room-dot__pulse {
+  animation: room-dot-pulse 1.4s ease-out infinite;
+}
+
+@keyframes room-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(228, 0, 43, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(228, 0, 43, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(228, 0, 43, 0);
+  }
 }
 
 /* --- legend / key panel (bottom-right) ---

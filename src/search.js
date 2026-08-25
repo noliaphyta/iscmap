@@ -1,15 +1,25 @@
 import { FLOORS, dataPath } from "./mapConfig.js";
 
-// Builds a flat index of every room across every floor so search works
-// globally, not just on the currently displayed floor.
+// Builds a flat index of every OCR'd room-number label across every floor
+// so search works globally, not just on the currently displayed floor.
+//
+// Indexes `labels` (OCR-detected room numbers, see tools/ocr_ingest.py),
+// not `rooms` (the traced polygons) - the polygons are staged in
+// data/source/ and withheld until verified (see data/source/README.md and
+// ROOMS_ENABLED in mapConfig.js), so they aren't reliable enough to search
+// against yet even where present. Labels carry an x/y point (their text
+// centroid) instead of a shape, which is exactly what roomDotLayer.js
+// needs to drop a single marker - so this index is deliberately
+// independent of ROOMS_ENABLED and keeps working the same whether or not
+// the polygon layer is ever switched on.
 export async function buildSearchIndex() {
   const index = [];
   const requests = FLOORS.map((floor) =>
     fetch(dataPath(floor))
       .then((res) => res.json())
       .then((data) => {
-        for (const room of data.rooms || []) {
-          index.push({ id: room.id, floor });
+        for (const label of data.labels || []) {
+          index.push({ id: label.room_number, floor, x: label.x, y: label.y });
         }
       })
       .catch(() => {

@@ -1,7 +1,8 @@
 // Lets the app guess a room's category by sampling the floor plan PNG's
 // own baked-in color at a given pixel, and matching it against
-// SWATCH_COLORS. Stopgap for hover/tap category detection while room
-// polygons aren't traced yet (see README "Known limitations").
+// SWATCH_COLORS. Stopgap for hover/tap category detection while the real
+// room-polygon data is withheld pending verification (ROOMS_ENABLED in
+// mapConfig.js is false - see data/source/README.md for why).
 //
 // Same load-into-canvas approach as landscapeLayer.js, but reading pixels
 // back out instead of rewriting alpha - each floor's ImageData is cached
