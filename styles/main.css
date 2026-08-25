@@ -38,11 +38,55 @@
 
 * { box-sizing: border-box; }
 
-html, body {
+/* Removes the default grey/blue flash box tapped buttons/links show on
+   Android and older iOS - looks out of place against this app's flat
+   poster-style borders/shadows. Each interactive element keeps its own
+   deliberate :active/.active state instead. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* Stops iOS auto-bumping font sizes on rotate, which would throw off
+     the fixed-px label/icon scaling in roomLayer.js. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: none;
+}
+
+body {
   margin: 0;
   height: 100%;
   background: var(--bg);
   color: var(--ink);
+  /* Prevent the page itself from scrolling/bouncing. #app being 100dvh +
+     overflow:hidden isn't enough on its own - iOS Safari's rubber-band
+     bounce is a document-level behavior that can still fire even when
+     nothing actually overflows, and can also get triggered by transient
+     layout shifts (keyboard opening for the search input, address bar
+     collapsing, etc). overscroll-behavior:none (set on html above) stops
+     the bounce/refresh gesture on browsers that support it; position:fixed
+     here is the older, more universally-supported belt-and-suspenders fix
+     for the same problem on iOS Safari versions that predate
+     overscroll-behavior. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  /* Belt-and-suspenders alongside <meta viewport user-scalable=no>: a
+     pinch gesture that starts on a button/panel (not the map) isn't
+     covered by #map's own touch-action:none below, and user-scalable=no
+     isn't reliably honored by every mobile browser - without this, that
+     pinch falls through to the browser's native page-zoom, which visibly
+     drags the whole layout (including the fixed-position control panels)
+     around instead of leaving them in place. touch-action only suppresses
+     the browser's own default gesture handling; it doesn't block
+     Leaflet's own JS touch listeners on #map, so map pinch-zoom is
+     unaffected. */
+  touch-action: none;
 }
 
 #app {
@@ -113,6 +157,21 @@ header.site-header h1 {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.9rem;
+  /* Unlike the legend (which measures against this element's bottom edge
+     - see legend.js clampHeight), nothing was clamping #controls itself.
+     On a short viewport (landscape phone, or a building with many floor
+     levels) the search box + floor stack + theme toggle + reset button
+     could together exceed the viewport height and get clipped by #app's
+     overflow:hidden with no way to reach the cut-off buttons at all.
+     Capping height and scrolling internally keeps every control reachable
+     no matter how tall the stack gets. */
+  max-height: calc(100dvh - 2.2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Matches --shadow's 5px offset so the buttons' drop shadows have room
+     to paint instead of being clipped by overflow-y:auto above. */
+  padding: 0 5px 5px 0;
+  touch-action: pan-y; /* allow scrolling this stack on touch even though the page-level lockdown above is touch-action:none */
 }
 
 .control-panel {
@@ -144,8 +203,26 @@ header.site-header h1 {
 
 .floor-btn:last-child { border-bottom: none; }
 
-.floor-btn:hover {
-  background: var(--yellow);
+/* Touchscreens fake a :hover state on tap (and don't reliably clear it),
+   so these hover rules only apply on devices that actually have a
+   hover-capable pointer (mouse/trackpad) - otherwise tapping a button on
+   mobile leaves it visibly "stuck" yellow until the user taps elsewhere. */
+@media (hover: hover) and (pointer: fine) {
+  .floor-btn:hover {
+    background: var(--yellow);
+  }
+
+  .search-result:hover {
+    background: var(--yellow);
+  }
+
+  .reset-view-btn:hover {
+    background: var(--yellow);
+  }
+
+  .theme-toggle-btn:hover {
+    background: var(--yellow);
+  }
 }
 
 .floor-btn.active {
@@ -210,7 +287,6 @@ header.site-header h1 {
 }
 
 .search-result:last-child { border-bottom: none; }
-.search-result:hover,
 .search-result.active { background: var(--yellow); }
 
 .search-empty {
@@ -240,10 +316,6 @@ header.site-header h1 {
   cursor: pointer;
 }
 
-.reset-view-btn:hover {
-  background: var(--yellow);
-}
-
 .theme-toggle-btn {
   width: 88px;
   background: var(--bg);
@@ -261,10 +333,6 @@ header.site-header h1 {
   overflow-wrap: break-word;
   text-align: center;
   cursor: pointer;
-}
-
-.theme-toggle-btn:hover {
-  background: var(--yellow);
 }
 
 /* --- error banner --- */
@@ -430,6 +498,7 @@ header.site-header h1 {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  touch-action: pan-y; /* html/body now lock down touch-action:none page-wide - this re-permits scrolling within the key itself */
 }
 
 .legend-panel.collapsed .legend-list {

@@ -5,6 +5,7 @@ import { createLegend } from "./legend.js";
 import { createSearchBox } from "./search.js";
 import { loadGeoData } from "./geoData.js";
 import { createThemeToggle } from "./theme.js";
+import { addBackgroundImage } from "./backgroundOverlay.js";
 
 const map = L.map("map", {
   crs: L.CRS.Simple,
@@ -13,6 +14,8 @@ const map = L.map("map", {
   zoomSnap: 0.25,
   attributionControl: false,
 });
+
+addBackgroundImage(map);
 
 const currentRoomLayerGroup = L.layerGroup().addTo(map);
 let hasFit = false; // only auto-fit on the very first level load - once someone
