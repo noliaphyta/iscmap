@@ -57,10 +57,13 @@ let zoomHandlerMap = null; // the map a zoom listener has already been attached 
 function pixelsPerUnit(map) {
   // Measuring two points 100 world-units apart (rather than 1) keeps this
   // accurate at extreme zoom levels where a 1-unit gap could round away to
-  // the same screen pixel.
+  // the same screen pixel. Math.abs guards against the map's horizontal
+  // mirror (see pixelCRS.js), which makes p1 land left of p0 on screen -
+  // without it this would return a negative scale and produce negative
+  // font/icon sizes.
   const p0 = map.latLngToContainerPoint(pixelToLatLng(0, 0));
   const p1 = map.latLngToContainerPoint(pixelToLatLng(100, 0));
-  return (p1.x - p0.x) / 100;
+  return Math.abs(p1.x - p0.x) / 100;
 }
 
 function rescaleLabels(map) {
