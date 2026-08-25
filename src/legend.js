@@ -1,14 +1,9 @@
 import { CATEGORY_STYLE } from "./mapConfig.js";
-import { categoryIconFileForKey } from "./icons.js";
 
 // Creates the DOM for the legend/key panel: a swatch + label per room
 // category, sourced from CATEGORY_STYLE so it can't drift out of sync with
 // what's actually drawn on the map. Static key only - no per-category
 // filter checkboxes, no interactivity beyond the existing collapse toggle.
-// An icon is shown next to a category's swatch only where one applies
-// (i.e. that category has its own fallback icon - see icons.js); most
-// icons are subcategory-driven and don't correspond to a single category,
-// so they're deliberately left out of the key to keep it short.
 // Collapsible via a toggle button, docked bottom-right (info panel owns
 // bottom-left).
 export function createLegend() {
@@ -35,15 +30,6 @@ export function createLegend() {
     swatch.className = "legend-swatch";
     swatch.style.background = fill;
     row.appendChild(swatch);
-
-    const iconFile = categoryIconFileForKey(key);
-    if (iconFile) {
-      const img = document.createElement("img");
-      img.className = "legend-icon";
-      img.src = `icons/${iconFile}`;
-      img.alt = "";
-      row.appendChild(img);
-    }
 
     const text = document.createElement("span");
     text.className = "legend-label";

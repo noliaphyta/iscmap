@@ -40,13 +40,3 @@ export function iconPathFor(category, subCategory) {
   const file = SUBCATEGORY_ICON[subKey] || CATEGORY_ICON_FALLBACK[categoryKey(category)];
   return file ? `icons/${file}` : null;
 }
-
-// Exposed for the legend, which only shows an icon next to a category
-// swatch when that category has a fallback icon of its own (currently just
-// Study Facilities) - most icons are subcategory-driven and don't
-// correspond to a single category, so they're intentionally left out of
-// the key to keep it short and unambiguous. Takes an already-normalized
-// CATEGORY_STYLE key (e.g. "study-facilities"), not a raw label.
-export function categoryIconFileForKey(categoryKeyStr) {
-  return CATEGORY_ICON_FALLBACK[categoryKeyStr] || null;
-}

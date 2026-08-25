@@ -519,13 +519,6 @@ header.site-header h1 {
   border: 1.5px solid var(--ink);
 }
 
-.legend-icon {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-  object-fit: contain;
-}
-
 .legend-label {
   font-size: 0.78rem;
   font-weight: 500;
