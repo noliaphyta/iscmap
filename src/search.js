@@ -1,43 +1,16 @@
-import { FLOORS, dataPath } from "./mapConfig.js";
-
-// Builds a flat index of every OCR'd room-number label across every floor
-// so search works globally, not just on the currently displayed floor.
-//
-// Indexes `labels` (OCR-detected room numbers, see tools/ocr_ingest.py),
-// not `rooms` (the traced polygons) - the polygons are staged in
-// data/source/ and withheld until verified (see data/source/README.md and
-// ROOMS_ENABLED in mapConfig.js), so they aren't reliable enough to search
-// against yet even where present. Labels carry an x/y point (their text
-// centroid) instead of a shape, which is exactly what roomDotLayer.js
-// needs to drop a single marker - so this index is deliberately
-// independent of ROOMS_ENABLED and keeps working the same whether or not
-// the polygon layer is ever switched on.
-export async function buildSearchIndex() {
-  const index = [];
-  const requests = FLOORS.map((floor) =>
-    fetch(dataPath(floor))
-      .then((res) => res.json())
-      .then((data) => {
-        for (const label of data.labels || []) {
-          index.push({ id: label.room_number, floor, x: label.x, y: label.y });
-        }
-      })
-      .catch(() => {
-        // A floor without data yet shouldn't break search for the rest.
-      })
-  );
-
-  await Promise.all(requests);
-  return index;
-}
-
-export function createSearchBox({ index, onSelect }) {
+// Indexes every feature with a non-empty room_number, regardless of
+// whether its geometry is null - a null-geometry room can still
+// legitimately be a search result, it just can't be zoomed to (the caller
+// handles that case; see main.js). The index itself is built once by
+// geoData.js and passed in here, since the geojson is loaded up front now
+// rather than per-floor on demand.
+export function createSearchBox({ index, levelOf, canonicalLevel, onSelect }) {
   const root = document.createElement("div");
   root.className = "search-box";
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "FIND A ROOM";
+  input.placeholder = "SEARCH ROOM NUMBER";
   input.setAttribute("aria-label", "Search for a room");
 
   const results = document.createElement("div");
@@ -58,11 +31,11 @@ export function createSearchBox({ index, onSelect }) {
     }
   }
 
-  function selectMatch(match) {
-    onSelect(match);
+  function selectMatch(feature) {
+    onSelect(feature);
     results.innerHTML = "";
     results.hidden = true;
-    input.value = match.id;
+    input.value = feature.properties.room_number;
   }
 
   input.addEventListener("input", () => {
@@ -75,7 +48,7 @@ export function createSearchBox({ index, onSelect }) {
     }
 
     const matches = index
-      .filter((r) => r.id.toLowerCase().includes(query))
+      .filter((f) => f.properties.room_number.toLowerCase().includes(query))
       .slice(0, 8);
 
     results.hidden = false;
@@ -88,12 +61,13 @@ export function createSearchBox({ index, onSelect }) {
       return;
     }
 
-    for (const match of matches) {
+    for (const feature of matches) {
+      const level = canonicalLevel(levelOf(feature.properties.floor_label));
       const item = document.createElement("button");
       item.type = "button";
       item.className = "search-result";
-      item.textContent = `${match.id} — Floor ${match.floor}`;
-      item.addEventListener("click", () => selectMatch(match));
+      item.textContent = `${feature.properties.room_number} — Floor ${level}`;
+      item.addEventListener("click", () => selectMatch(feature));
       results.appendChild(item);
     }
   });
@@ -113,6 +87,12 @@ export function createSearchBox({ index, onSelect }) {
       items[activeIndex].click();
     } else if (e.key === "Escape") {
       results.innerHTML = "";
+      results.hidden = true;
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".search-box")) {
       results.hidden = true;
     }
   });

@@ -3,8 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="color-scheme" content="light" />
-  <title>ISC — Building Map</title>
+  <meta name="color-scheme" content="light dark" />
+  <!-- Applied before first paint (not from src/theme.js, which is a module
+       and runs too late to avoid a light->dark flash) so the correct
+       theme is already set by the time styles/main.css's [data-theme]
+       rules are evaluated. Mirrors src/theme.js's own resolution order:
+       explicit stored choice wins, else fall back to the OS preference. -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("campus-map-theme");
+        var theme = stored || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {}
+    })();
+  </script>
+  <title>ISC Map</title>
+
+  <link rel="icon" type="image/png" href="assets/icon.png" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,7 +34,7 @@
     <div id="map"></div>
 
     <header class="site-header">
-      <h1><a href="https://www.wm.edu/about/visiting/campus-landmarks/integrated-science-center/" target="_blank" rel="noopener noreferrer" aria-label="ISC — Integrated Science Center (opens campus landmark page in a new tab)">ISC</a></h1>
+      <h1>ISC MAP</h1>
     </header>
 
     <div id="controls"></div>

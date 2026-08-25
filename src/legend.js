@@ -1,15 +1,14 @@
-import { FEATURE_TYPES, EXIT_ARROW_ICON } from "./icons.js";
+import { CATEGORY_STYLE } from "./mapConfig.js";
+import { categoryIconFileForKey } from "./icons.js";
 
-// Types listed in the on-map icon key. Point features that are placed
-// rarely/contextually (info desks, restaurants, lost & found, fire
-// extinguishers) are still rendered on the map and clickable, but are left
-// out of the key itself to keep it short - it only surfaces the icons
-// someone is likely to actually be scanning for.
-const KEY_FEATURE_TYPES = ["exit", "elevator", "stairs", "restroom", "cafe", "study"];
-
-// Creates the DOM for the legend/key panel: an icon + label per
-// point-feature type, sourced from FEATURE_TYPES - so it can't drift out
-// of sync with what's actually placed on the map.
+// Creates the DOM for the legend/key panel: a swatch + label per room
+// category, sourced from CATEGORY_STYLE so it can't drift out of sync with
+// what's actually drawn on the map. Static key only - no per-category
+// filter checkboxes, no interactivity beyond the existing collapse toggle.
+// An icon is shown next to a category's swatch only where one applies
+// (i.e. that category has its own fallback icon - see icons.js); most
+// icons are subcategory-driven and don't correspond to a single category,
+// so they're deliberately left out of the key to keep it short.
 // Collapsible via a toggle button, docked bottom-right (info panel owns
 // bottom-left).
 export function createLegend() {
@@ -28,31 +27,29 @@ export function createLegend() {
   list.className = "legend-list";
   root.appendChild(list);
 
-  const iconHeading = document.createElement("div");
-  iconHeading.className = "legend-heading";
-  iconHeading.textContent = "Map Icons";
-  list.appendChild(iconHeading);
-
-  for (const type of KEY_FEATURE_TYPES) {
-    const { label, icon } = FEATURE_TYPES[type];
+  for (const [key, { fill, label }] of Object.entries(CATEGORY_STYLE)) {
     const row = document.createElement("div");
     row.className = "legend-row";
 
-    const badge = document.createElement("span");
-    badge.className = "legend-icon-badge";
-    const img = document.createElement("img");
-    // "exit" has no fixed icon (it's direction-based, see icons.js) - the
-    // up-arrow stands in as the representative glyph in the key.
-    img.src = icon || EXIT_ARROW_ICON.up;
-    img.alt = "";
-    badge.appendChild(img);
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.background = fill;
+    row.appendChild(swatch);
+
+    const iconFile = categoryIconFileForKey(key);
+    if (iconFile) {
+      const img = document.createElement("img");
+      img.className = "legend-icon";
+      img.src = `icons/${iconFile}`;
+      img.alt = "";
+      row.appendChild(img);
+    }
 
     const text = document.createElement("span");
     text.className = "legend-label";
     text.textContent = label;
-
-    row.appendChild(badge);
     row.appendChild(text);
+
     list.appendChild(row);
   }
 
@@ -68,10 +65,9 @@ export function createLegend() {
   });
 
   // The key is docked bottom-right and grows upward as it expands, while
-  // #controls (search/floor picker/reset/landscape) is docked top-right and
-  // grows downward. On short viewports - or once #controls picks up more
-  // buttons after this panel is created - the two can otherwise grow into
-  // each other. Rather than guess a fixed max-height, measure #controls'
+  // #controls (search/floor picker/reset) is docked top-right and grows
+  // downward. On short viewports the two can otherwise grow into each
+  // other. Rather than guess a fixed max-height, measure #controls'
   // actual bottom edge and cap the key so its top edge never passes it.
   function clampHeight() {
     if (!expanded) {
@@ -85,16 +81,11 @@ export function createLegend() {
     root.style.maxHeight = `${Math.max(120, available)}px`;
   }
 
-  // #controls keeps gaining buttons/panels after createLegend() runs (see
-  // main.js), and its own height changes as floors/search results render,
-  // so re-measure on resize and whenever #controls itself resizes.
   window.addEventListener("resize", clampHeight);
   const controlsEl = document.getElementById("controls");
   if (controlsEl && "ResizeObserver" in window) {
     new ResizeObserver(clampHeight).observe(controlsEl);
   }
-  // Defer the first measurement a tick so buttons main.js appends *after*
-  // calling createLegend() are already in the DOM and counted.
   requestAnimationFrame(clampHeight);
 
   return { root };

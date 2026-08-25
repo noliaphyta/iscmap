@@ -1,10 +1,12 @@
-import { FLOORS } from "./mapConfig.js";
-
 // Creates the DOM for the floor-select control: a plain vertical stack of
-// squared, numbered buttons (elevator-panel style). This is a fixed
-// overlay div (not a Leaflet control layer) so it never moves or scales
-// when the map pans/zooms - floor switching has to feel instant.
-export function createControlPanel({ onSelectFloor }) {
+// squared, buttons (elevator-panel style). This is a fixed overlay div
+// (not a Leaflet control layer) so it never moves or scales when the map
+// pans/zooms - floor switching has to feel instant.
+//
+// Levels are now dynamic (derived from the geojson by src/geoData.js), not
+// a hardcoded list - `levels` is passed in already sorted top-first (e.g.
+// ["4","3","2","1","B"]) rather than imported from mapConfig.
+export function createControlPanel({ levels, onSelectLevel }) {
   const root = document.createElement("div");
   root.className = "control-panel";
 
@@ -12,15 +14,14 @@ export function createControlPanel({ onSelectFloor }) {
   floorStack.className = "floor-stack";
   root.appendChild(floorStack);
 
-  function render(currentFloor) {
+  function render(currentLevel) {
     floorStack.innerHTML = "";
-    const floors = [...FLOORS].sort((a, b) => b - a);
-    for (const floor of floors) {
+    for (const level of levels) {
       const btn = document.createElement("button");
-      btn.className = "floor-btn" + (floor === currentFloor ? " active" : "");
-      btn.textContent = floor;
-      btn.setAttribute("aria-label", `Floor ${floor}`);
-      btn.addEventListener("click", () => onSelectFloor(floor));
+      btn.className = "floor-btn" + (level === currentLevel ? " active" : "");
+      btn.textContent = level;
+      btn.setAttribute("aria-label", `Floor ${level}`);
+      btn.addEventListener("click", () => onSelectLevel(level));
       floorStack.appendChild(btn);
     }
   }

@@ -5,10 +5,35 @@
   --red: #e4002b;
   --blue: #0047ab;
   --yellow: #ffd100;
-  --border: 2px solid #000000;
-  --shadow: 5px 5px 0 #000000;
+  /* --border/--shadow are built from --ink rather than a literal #000, so
+     they flip automatically under [data-theme="dark"] below instead of
+     needing every border/shadow declaration overridden individually. */
+  --border: 2px solid var(--ink);
+  --shadow: 5px 5px 0 var(--ink);
   color-scheme: light;
   font-family: "Jost", "Futura", "Century Gothic", sans-serif;
+}
+
+/* --- dark theme ---
+   Toggled by adding data-theme="dark" to <html> (see src/theme.js).
+   Room polygons keep their category colors and black text/icons
+   regardless of theme - they sit on the map, not the page background, so
+   dark mode only needs to touch the site chrome (header/panels/map
+   background) for this to read correctly. */
+[data-theme="dark"] {
+  --bg: #1a1a1a;
+  --ink: #f2f2ef;
+  --ink-dim: #9a9a94;
+  --red: #ff5c73;
+  --blue: #5b9bff;
+  --yellow: #ffd100;
+  color-scheme: dark;
+}
+
+/* Leaflet tiles/panes default to a white backdrop seam at the map's own
+   edges before any room polygons are drawn on it - keep that dark too. */
+[data-theme="dark"] .leaflet-container {
+  background: var(--bg);
 }
 
 * { box-sizing: border-box; }
@@ -54,6 +79,8 @@ header.site-header {
   pointer-events: none;
 }
 
+/* --- header (link removed - building identity/naming is an open question,
+   see README.md) --- */
 header.site-header h1 {
   font-size: 1.6rem;
   font-weight: 700;
@@ -62,32 +89,9 @@ header.site-header h1 {
   color: var(--ink);
 }
 
-/* The header itself is pointer-events: none so its padding doesn't block
-   map dragging underneath - the link needs pointer-events: auto to opt
-   itself back in. Padding + negative margin grows the tap target past the
-   visual text (mobile touch-target sizing) without shifting layout. */
-header.site-header h1 a {
-  pointer-events: auto;
-  display: inline-block;
-  padding: 0.6rem 0.7rem;
-  margin: -0.6rem -0.7rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-header.site-header h1 a:hover,
-header.site-header h1 a:focus-visible {
-  text-decoration: underline;
-}
-
-header.site-header h1 a:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
-}
-
 /* Leaflet's default zoom control sits top-left, same corner as the site
-   header - push it down below the header so the "ISC" title is never
-   covered by the +/- buttons. */
+   header - push it down below the header so the title is never covered by
+   the +/- buttons. */
 .leaflet-top.leaflet-left {
   top: 4.6rem;
 }
@@ -127,7 +131,7 @@ header.site-header h1 a:focus-visible {
 
 .floor-btn {
   border: none;
-  border-bottom: 2px solid #000000;
+  border-bottom: 2px solid var(--ink);
   background: transparent;
   color: var(--ink);
   font-family: inherit;
@@ -197,7 +201,7 @@ header.site-header h1 a:focus-visible {
   text-align: left;
   background: transparent;
   border: none;
-  border-bottom: 2px solid #000000;
+  border-bottom: 2px solid var(--ink);
   color: var(--ink);
   font-family: inherit;
   font-size: 0.78rem;
@@ -240,12 +244,7 @@ header.site-header h1 a:focus-visible {
   background: var(--yellow);
 }
 
-/* --- landscape background toggle ---
-   Widened from the original 64px (sized for "RESET VIEW") because
-   "SHOW LANDSCAPE" / "HIDE LANDSCAPE" is longer and was overflowing the
-   button's edges at that width. white-space/overflow-wrap let it wrap to
-   two lines cleanly instead of spilling out. */
-.landscape-toggle-btn {
+.theme-toggle-btn {
   width: 88px;
   background: var(--bg);
   border: var(--border);
@@ -264,13 +263,8 @@ header.site-header h1 a:focus-visible {
   cursor: pointer;
 }
 
-.landscape-toggle-btn:hover {
+.theme-toggle-btn:hover {
   background: var(--yellow);
-}
-
-.landscape-toggle-btn.active {
-  background: var(--ink);
-  color: var(--bg);
 }
 
 /* --- error banner --- */
@@ -282,7 +276,7 @@ header.site-header h1 a:focus-visible {
   z-index: 900;
   background: var(--ink);
   color: var(--bg);
-  border: 2px solid #000000;
+  border: 2px solid var(--ink);
   box-shadow: var(--shadow);
   padding: 0.7rem 1.1rem;
   font-size: 0.82rem;
@@ -314,12 +308,26 @@ header.site-header h1 a:focus-visible {
 }
 
 .info-category {
-  margin: 0;
+  margin: 0 0 0.4rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-dim);
   font-size: 0.75rem;
   font-weight: 500;
+}
+
+.info-detail {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.info-detail + .info-detail {
+  margin-top: 0.35rem;
+}
+
+.info-dim {
+  color: var(--ink-dim);
+  font-size: 0.75rem;
 }
 
 .info-empty {
@@ -333,112 +341,49 @@ header.site-header h1 a:focus-visible {
   cursor: pointer;
 }
 
-.leaflet-tooltip {
-  background: var(--ink);
-  border: none;
-  border-radius: 0;
-  color: var(--bg);
-  font-family: "Jost", sans-serif;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  box-shadow: none;
+/* --- room-number labels + subcategory-inferred icons ---
+   Auto-placed at each room's area-weighted centroid (see roomLayer.js),
+   replacing the old manually-authored point-feature icon set. Rendered as
+   a divIcon marker whose *outer* element (.room-label-marker) is exactly
+   what Leaflet writes its position transform onto - it must stay
+   untouched, sized [0,0], so the inner wrapper below does all the visual
+   work via its own translate(-50%,-50%), decoupling label sizing entirely
+   from Leaflet's icon box model (roomLayer.js drives pixel size directly
+   via inline font-size/width/height, recomputed on every zoom change).
+   pointer-events: none throughout so labels never intercept clicks meant
+   for the room polygon underneath, and user-select: none so drag-panning
+   near a label doesn't trigger a text-selection drag. */
+.room-label-marker {
+  pointer-events: none;
 }
 
-.leaflet-tooltip-top:before {
-  border-top-color: var(--ink);
-}
-
-/* --- point feature icons (exits, elevators, restrooms, cafe, etc) ---
-   White circle badge + black outline + hard shadow, matching the same
-   poster-flat chrome used elsewhere (--border/--shadow), so these read as
-   one consistent "wayfinding pictogram" family distinct from the colored
-   room polygons underneath. L.divIcon keeps them a fixed screen size at
-   every zoom level, unlike the polygons. */
-/* Leaflet writes its own position transform (translate3d) directly onto
-   this element on every pan/zoom frame - it must not carry a transform of
-   its own, or our CSS transform gets silently overwritten. Sizing only. */
-.feature-icon-badge {
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-}
-
-.feature-icon-badge:hover {
-  z-index: 1000 !important;
-}
-
-/* The actual visual badge. Split out from .feature-icon-badge (above)
-   because that outer element is where Leaflet writes its own position
-   transform on every pan/zoom frame - any transform we put there
-   (including the zoom/hover scaling below) gets silently overwritten by
-   Leaflet's.
-   --icon-zoom-scale is written by updateIconScale() in main.js on every
-   'zoom'/'zoomend' event - it interpolates between ICON_MIN_SCALE (at
-   reset/minZoom) and ICON_MAX_SCALE (at maxZoom, native 32px) so icons
-   grow smoothly across the map's whole usable zoom range instead of
-   sitting fixed. Defaults to 1 so the icon still renders at native size
-   before the first zoom event (e.g. very first paint). */
-.feature-icon-inner {
-  width: 100%;
-  height: 100%;
-  background: var(--bg);
-  border: var(--border);
-  border-radius: 50%;
-  box-shadow: 3px 3px 0 #000000;
+.room-label-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  transform: scale(var(--icon-zoom-scale, 1));
-  transform-origin: center center;
-  transition: transform 0.1s ease;
+  pointer-events: none;
 }
 
-.feature-icon-badge:hover .feature-icon-inner {
-  transform: scale(calc(var(--icon-zoom-scale, 1) * 1.12));
-}
-
-.feature-icon-inner img {
-  width: 20px;
-  height: 20px;
+.room-icon {
+  display: block;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
 }
 
-/* --- room target marker (OCR-detected room location) ---
-   Shown only for the one room currently searched/selected - see
-   roomDotLayer.js. Not a persistent per-room marker layer; a floor plan
-   with a few hundred OCR'd rooms showing dots all the time was too
-   visually noisy, so this renders at most one marker at a time. */
-.room-dot {
-  cursor: pointer;
-}
-
-.room-dot__pulse {
-  display: block;
-  width: 10px;
-  height: 10px;
-  margin: 2px;
-  border-radius: 50%;
-  background: var(--red);
-  border: 2px solid var(--ink);
-}
-
-.room-dot--highlighted .room-dot__pulse {
-  animation: room-dot-pulse 1.4s ease-out infinite;
-}
-
-@keyframes room-dot-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(228, 0, 43, 0.55);
-  }
-  70% {
-    box-shadow: 0 0 0 14px rgba(228, 0, 43, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(228, 0, 43, 0);
-  }
+.room-number-label {
+  font-family: "Jost", sans-serif;
+  font-weight: 600;
+  color: #000000;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* --- legend / key panel (bottom-right) ---
@@ -494,45 +439,28 @@ header.site-header h1 a:focus-visible {
 .legend-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.5rem;
   padding: 0.22rem 0;
+}
+
+.legend-swatch {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--ink);
+}
+
+.legend-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 
 .legend-label {
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--ink);
-}
-
-.legend-heading {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  margin: 0.75rem 0 0.35rem;
-}
-
-.legend-heading:first-child {
-  margin-top: 0;
-}
-
-/* Icon-key badges: plain, unbordered - just the icon itself, sized up a
-   bit from the on-map .feature-icon-badge glyph size so it reads clearly
-   in the key without the circular outline/background. */
-.legend-icon-badge {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.legend-icon-badge img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
 }
 
 /* On narrow viewports (mobile), start collapsed so the key doesn't eat

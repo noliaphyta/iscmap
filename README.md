@@ -1,226 +1,172 @@
-# ISC — Building Map
+# Campus Map
 
-An interactive, floor-by-floor map of ISC. Search for a room number to drop
-a pin on it, hover the floor plan to see what kind of space is under your
-cursor, and jump between floors with the elevator-style button panel in the
-corner.
+An interactive, floor-by-floor map of two campus buildings. Search for a
+room number to jump to it, click any room for its category and description,
+and switch floors with the elevator-style button panel in the corner. Both
+buildings render together on one shared floor stack — pick a level and you
+see both buildings' rooms for that level at once.
 
 **Live demo:** enable GitHub Pages (see below) and it'll be at
 `https://<your-username>.github.io/<repo-name>/`
 
 ## How it works
 
-- Each floor is a plain image (`assets/floorplans/ISC-N.png`) shown with
-  [Leaflet](https://leafletjs.com/) in `L.CRS.Simple` mode — this treats the
-  image as a flat pixel plane instead of a geographic map, which is what you
-  want for an indoor floor plan.
-- An optional site-context layer (`assets/transparentlandscape.png`) can be
-  toggled on with the "SHOW LANDSCAPE" button. It's the same 4000×3297 canvas
-  as the floor plans with the building footprint cut out, so it lines up
-  exactly underneath them. Because the floor plan PNGs are fully opaque
-  (including their white "empty" background), showing the landscape also
-  keys the floor plan's near-white pixels to transparent client-side
-  (`src/landscapeLayer.js`, canvas-based, cached per floor) — otherwise the
-  landscape would never be visible.
-- **Two independent room-data systems are live at once**, because neither
-  one alone is both accurate and complete yet — see "Room data" below for
-  the full story:
-  - **Room search → dot** (`src/roomDotLayer.js`, `tools/ocr_ingest.py`):
-    every floor's room-number text has been OCR'd directly off the image
-    into a `labels` array (`{ room_number, x, y }`). Typing a room number
-    in search drops a single pulsing marker on its detected location — this
-    is the accurate, ID-correct way to find a specific room.
-  - **Hover-to-browse category** (`src/colorProbe.js`): hovering (or
-    tapping, on mobile) anywhere else on the floor plan samples the image's
-    own baked-in swatch color under the cursor and shows the matching
-    category (e.g. "laboratory facilities") in the info panel — a stopgap
-    for general browsing that doesn't require verified room shapes.
-  - **Room polygons** (`src/roomLayer.js`) are traced for all four floors
-    but withheld — `ROOMS_ENABLED` in `src/mapConfig.js` is `false` — until
-    someone verifies them against the real building. Once flipped on,
-    they'd add hover/click-to-browse-by-shape on top of the two systems
-    above, not replace them.
-- The floor control (`src/floorControl.js`) is a fixed overlay panel, not
-  part of the map itself, so switching floors never resets your pan/zoom
-  position.
-- Room search (`src/search.js`) loads every floor's `labels` once and
-  filters by room number as you type, then jumps straight to the right
-  floor and shows the dot.
-
-## Currently included
-
-Four floors, **0 through 3**, all one building (ISC). Floor 4 isn't wired
-up yet — see "Known limitations" below.
-
-- All four floor plan images (`assets/floorplans/ISC-0.png` …
-  `ISC-3.png`) are the finalized, full-detail floor plans, each
-  **4000 × 3297px**.
-- Point features (exits, elevators, restrooms, cafés, etc. — the
-  `features` array in each `data/floorN.json`) are populated and live on
-  the map for all four floors.
-- OCR'd room-number labels (the `labels` array) are populated for all four
-  floors and drive search → dot. Low-confidence OCR reads are held in each
-  floor's `flagged` array for manual review (see `tools/label-editor.html`).
-- Room polygons are traced for all four floors (145–241 rooms each) but
-  **not currently shown on the map** — see "Room data" below for why, and
-  how to turn them back on.
+- The map is pure vector, rendered directly from room polygon geometry in
+  `data/rooms.geojson` — there is no background floor-plan image. Leaflet
+  runs in `L.CRS.Simple` mode (`src/pixelCRS.js`), treating the geojson's
+  own local coordinate units as a flat plane instead of a geographic map.
+  Bounds for each floor are computed from that floor's feature bbox
+  (`boundsForFeatures()`) rather than from an image's pixel dimensions.
+- `src/geoData.js` fetches the geojson once on load and builds every index
+  the app needs: rooms grouped by building/floor, the canonical floor list,
+  and the search index. It also resolves the one data quirk that needs
+  special-casing: Building 1's basement is labeled `FloorB` and Building 2's
+  is labeled `Floor0` — same physical level, different label. Both are
+  canonicalized to a single `"B"` floor button instead of showing two
+  separate basements (`levelOf()` / `canonicalLevel()`).
+- Building 1 and Building 2 coordinates already share one aligned
+  coordinate space (a translate-only transform, no rotation/mirroring, was
+  applied upstream before this data was handed off) — the app just renders
+  both buildings' features as-is, with no further alignment step.
+- `src/roomLayer.js` draws each room as a polygon colored by category, with
+  a room-number label placed at an area-weighted centroid (not a vertex
+  average, which misplaces labels on L-shaped/notched rooms). Labels are
+  `pointer-events: none` and non-selectable, so they never intercept clicks
+  meant for the room underneath and never trigger a text-selection drag.
+  Label size and icon size scale with zoom (measured via
+  `latLngToContainerPoint`) rather than being fixed to a CRS formula.
+- Rooms with `geometry: null` (~2% of the data, a flaky upstream scrape)
+  aren't drawn and can't be zoomed to, but they're still indexed for search
+  by `room_number` and show up as an unzoomed, clearly-labeled result.
 
 ## Room data
 
-### Room-number labels (search, live now)
+`data/rooms.geojson` is the single source of truth for room shapes,
+numbers, and categories — replacing the three partial systems the previous
+version of this app carried (OCR'd room-number dots, a color-probe hover
+stopgap, and unverified traced polygons sitting inert behind a feature
+flag). All three, and the tooling that produced them, have been deleted:
+`src/colorProbe.js`, `src/roomDotLayer.js`, `tools/ocr_ingest.py`,
+`tools/label-editor.html`, `tools/polygon-editor.html`,
+`tools/publish-rooms.py`, and `data/source/`.
 
-`tools/ocr_ingest.py` scans a floor plan image for room-number text and
-writes a validated `labels` array (accurate room ID, no shape — just the
-text's centroid point) plus a `flagged` array for low-confidence reads:
+The floor-plan PNGs (`assets/floorplans/`) and the landscape-background
+toggle (`src/landscapeLayer.js`, `assets/transparentlandscape.png`, the
+"SHOW/HIDE LANDSCAPE" button) are also gone. The landscape image was
+chroma-keyed to the exact pixel canvas of the old floor-plan PNGs; that
+alignment has no meaning in the geojson's coordinate space. If a
+site-context backdrop is wanted later, it needs a fresh image aligned to
+the geojson's bounding box — that's a new task, not something this handoff
+solves.
 
-```bash
-python3 tools/ocr_ingest.py --floor 1 \
-  --image assets/floorplans/ISC-1.png \
-  --data data/floor1.json --merge
-```
+### Category colors
 
-Requires `pytesseract`, `Pillow`, and the `tesseract` binary. Open
-`tools/label-editor.html` locally to review/fix flagged points, add missed
-rooms by clicking the map, or move/delete existing ones — it reads and
-writes `data/floorN.json`'s `labels`/`flagged` keys directly and preserves
-every other key in the file.
+`src/mapConfig.js`'s `CATEGORY_STYLE` palette is reused verbatim from the
+previous version. `categoryKey()` normalizes a raw `Category` string (trim,
+lowercase, spaces → hyphens) so it matches `CATEGORY_STYLE`'s keys without
+a hand-maintained mapping table.
 
-### Room polygons (traced, withheld)
+### Icons
 
-The public `data/floorN.json` files each ship an empty `rooms` array on
-purpose. The actual traced polygons exist — they live in
-`data/source/floorN.json` instead, alongside the tooling to verify and
-publish them:
+oldmap's existing `icons/` set (built for manually-placed point features
+like exits, elevators, and restrooms) is reused, but placement is now
+automatic: `src/icons.js` infers an icon per room from its data and
+`roomLayer.js` places it at the room's centroid.
 
-- **Why they're withheld:** the floor plan images were swapped for a
-  different (larger, differently-composed) export at some point, and while
-  the current `data/source/floorN.json` files have been updated to the
-  right `imageSize` (`[4000, 3297]`), the room polygons in them haven't
-  been re-verified against the current images room-by-room. Shipping
-  unverified polygons as real data risked showing confidently wrong room
-  shapes/positions, which is worse than not showing them.
-- **`tools/polygon-editor.html`** reads from and writes to
-  `data/source/floorN.json`, never the public files — so in-progress
-  tracing/fixing work can never accidentally go live mid-edit.
-- **`tools/publish-rooms.py`** copies a floor's verified `rooms` array from
-  `data/source/floorN.json` into the public `data/floorN.json` once you've
-  checked it: `python3 tools/publish-rooms.py 2` (or `--all`). This only
-  touches the `rooms` key — `labels`, `flagged`, `features`, `image*` in
-  the public file are left exactly as they are.
-- Once at least one floor has real rooms published, flip `ROOMS_ENABLED`
-  to `true` in `src/mapConfig.js` to turn the room-polygon layer back on
-  (it renders alongside, not instead of, the dot-search and hover-category
-  systems). See `data/source/README.md` for the full workflow.
+Category alone is too coarse to drive this — restrooms, for example, are
+`Category: "Building Services"` / `SubCategory: "Public Rest Room"`, so a
+category-only match misses them. `iconPathFor()` checks `SubCategory`
+first (see the table in `src/icons.js`), and only falls back to a
+`Category`-level match (currently just `study-facilities` →
+`waitingroom.svg`) when no subcategory signal exists. Rooms that match
+neither get no icon at all — that's deliberate: a weak or misleading icon
+on a generic office or storage room is worse than none.
 
-## Adding a real floor
+**Known gap, not solved by this data:** the old point-feature system also
+covered exit signage (`down-arrow.svg`, `uparrow.svg`, etc.) — directional
+arrows pointing toward the nearest exit. The geojson has no equivalent;
+FAMIS categorizes rooms, not wayfinding points. Those icon files are still
+in `icons/` (unused) in case exit data becomes available later, but nothing
+in this app currently fabricates exit locations or directions from room
+data. If exit wayfinding matters for this app, it needs a separate
+data-collection effort.
 
-1. Drop the floor plan image in `assets/floorplans/`, named `ISC-N.png`.
-   Note its pixel dimensions (`file image.png` on macOS/Linux, or check
-   image properties on Windows) — update `imageSize` in that floor's JSON
-   if it differs from the others.
-2. Run `tools/ocr_ingest.py --merge` against it (see "Room data" above) to
-   populate `labels`/`flagged` so search works for the new floor
-   immediately.
-3. Open `tools/polygon-editor.html` locally (see "Running locally" below —
-   it needs a local server, not a `file://` double-click) if you also want
-   to trace room polygons. Load your image, click each room's corners in
-   order, name it, hit "Save room". Repeat for every room, then copy the
-   exported JSON into the `"rooms"` array of `data/source/floorN.json`
-   (**not** `data/floorN.json`).
-4. Once you've verified the room shapes against the real building, run
-   `python3 tools/publish-rooms.py N` to publish that floor's polygons into
-   the public `data/floorN.json`.
-5. If you added a floor number that didn't exist before, add it to
-   `FLOORS` in `src/mapConfig.js`.
+## Open questions
 
-Room categories currently understood (`src/mapConfig.js` →
-`CATEGORY_STYLE` / `SWATCH_COLORS`): `building-services`, `circulation`,
-`classroom-facilities`, `general-use`, `laboratory-facilities`,
-`mechanical`, `office-facilities`, `special-use`, `study-facilities`,
-`support`, `no-value`. `CATEGORY_STYLE` colors the room-polygon layer once
-it's on; `SWATCH_COLORS` is what `colorProbe.js` matches against for the
-hover stopgap. There's intentionally no on-screen legend for these (unlike
-the point-feature icon key) — category shows up in the info panel on
-hover/click. Add more categories to both if you need other types.
+These were flagged during the geojson migration and are still unresolved —
+placeholder copy is in production until someone confirms the answers:
+
+- **Building identity.** The app's original scope was one building (ISC),
+  four floors. This geojson covers two buildings (`Building1`, `Building2`,
+  numeric IDs `449`/`…`) whose floor counts don't cleanly match that. Is
+  either of these ISC? `index.html`'s `<h1>` currently reads a placeholder
+  "CAMPUS MAP" (see the `TODO` comment there) instead of a real building
+  name/link, pending confirmation.
+- **Display names.** The geojson only has opaque numeric `building_id` /
+  `floor_id` values and `Building1`/`Building2` labels — real, human-facing
+  building and floor names are needed before this ships as production copy.
+- **Exit wayfinding.** Whether exit-arrow signage is in scope for a future
+  iteration (see "Icons" above) — no exit data exists yet either way.
+
+## Search
+
+Every feature with a non-empty `room_number` is indexed, including rooms
+with `geometry: null` — those still appear as search results (so the room
+number is findable) but can't be zoomed to, since there's no geometry to
+zoom to. Selecting a result switches to that room's canonical floor and
+zooms/pans to its bbox.
+
+## Legend
+
+The legend (`src/legend.js`) is a static key — a color swatch and label per
+category, plus an icon next to categories that have one
+(`categoryIconFileForKey()`). It has the same collapse toggle as before but
+no per-category filter checkboxes and no other interactivity.
+
+## Info panel
+
+Clicking a room shows its room number, `Category` (plus `SubCategory` if
+present), and `Description`. `Area` and occupancy/vacancy fields are
+deliberately left out as noise for this app's purpose.
 
 ## Running locally
 
-Because the app loads floor data with `fetch()`, opening `index.html`
-directly (`file://...`) will fail due to browser CORS restrictions on local
-files. Run a tiny local server from the repo root instead:
+No build step, no bundler — this is plain ES modules served as static
+files.
 
 ```bash
-python3 -m http.server 8000
-# then open http://localhost:8000
+python3 -m http.server
 ```
 
-or, with Node installed:
+Then open `http://localhost:8000/`.
 
-```bash
-npx serve .
-```
+## Deploying
 
-## Deploying to GitHub Pages
+Push to a GitHub repo with Pages enabled (see `.nojekyll`, already present
+so Pages serves the `src/`/`data/`/`icons/` folders as-is without Jekyll
+processing). No build/CI step is required — the deployed branch's files are
+served directly.
 
-No build step is required — this is plain HTML/CSS/JS.
-
-1. Push this repo to GitHub.
-2. In the repo, go to **Settings → Pages**.
-3. Under "Build and deployment", set **Source** to "Deploy from a branch".
-4. Set **Branch** to `main` and folder to `/ (root)`, then save.
-5. Your site will be live at `https://<username>.github.io/<repo-name>/`
-   within a minute or two. Every push to `main` redeploys automatically.
-   (`.nojekyll` is included so GitHub Pages serves files/folders starting
-   with `_` or `.` as-is, without running them through Jekyll first.)
-
-## Project structure
+## File structure
 
 ```
-index.html                  Entry point
-styles/main.css             All styling (white / black / primary-color, squared corners)
-src/
-  main.js                    Bootstraps the map, wires everything together
-  mapConfig.js               Which floors exist, ROOMS_ENABLED, category colors, file paths
-  pixelCRS.js                Pixel <-> Leaflet coordinate helpers
-  roomLayer.js               Draws room polygons from JSON (currently unused - see "Room data")
-  roomDotLayer.js            Draws the single search-result dot from a room's OCR'd label
-  featureLayer.js            Draws point features (exits, elevators, restrooms, etc.)
-  icons.js                   Feature type -> icon/label registry
-  colorProbe.js              Color-sampling stopgap for category info while rooms are off
-  floorControl.js            The corner floor-select panel
-  legend.js                  Collapsible point-feature icon key (bottom-right)
-  search.js                  Global room-number search (indexes `labels`)
-  landscapeLayer.js          Client-side chroma-key for the landscape toggle
+index.html
+styles/main.css       — oldmap's visual identity, unchanged (Jost font,
+                         black 2px borders, hard offset shadows, poster
+                         color accents), minus the deleted landscape toggle
 data/
-  floor0.json ... floor3.json   Public per-floor data the app fetches (rooms empty, labels populated)
-  source/floor0.json ... floor3.json   Full data incl. unverified room polygons - see data/source/README.md
-assets/floorplans/          Floor plan images (ISC-0.png ... ISC-3.png)
-tools/
-  polygon-editor.html       Standalone tool for tracing/fixing room polygons (edits data/source/)
-  publish-rooms.py          Publishes a verified floor's rooms from data/source/ into data/
-  ocr_ingest.py              OCRs room-number labels off a floor plan image into data/floorN.json
-  label-editor.html          Review/fix OCR'd room labels and flagged low-confidence reads
+  rooms.geojson        — single source of truth for all room data
+src/
+  mapConfig.js          — GEOJSON_PATH, CATEGORY_STYLE, categoryKey()
+  geoData.js             — loads/indexes the geojson, floor canonicalization
+  pixelCRS.js            — CRS.Simple helpers, boundsForFeatures()
+  roomLayer.js            — polygons, centroid labels, icon placement
+  floorControl.js        — dynamic floor-stack button panel
+  legend.js               — static category key
+  search.js               — room-number search over the geojson index
+  icons.js                — subcategory/category → icon file resolution
+  main.js                  — app bootstrap
+icons/                  — oldmap's icon set (unused exit-arrow icons kept,
+                           see "Icons" above)
+assets/icon.png         — favicon/site icon
 ```
-
-## Known limitations / next steps
-
-- **Room polygons are traced but not shown** — see "Room data" above for
-  why, and the steps to verify and publish a floor.
-- **Floor 4 doesn't exist yet.** `FLOORS` in `src/mapConfig.js`
-  intentionally excludes it. To add it: drop `ISC-4.png` in
-  `assets/floorplans/`, run `ocr_ingest.py` against it, create
-  `data/source/floor4.json` (trace rooms with the polygon editor) if you
-  also want polygons, publish once verified, then add `4` back into
-  `FLOORS`.
-- Room metadata is minimal (room number + floor for labels; id + category
-  for polygons). Extend the JSON schema with fields like `department` or
-  `notes` and update `updateInfoPanel()` in `src/main.js` to display them.
-- Very large floor images (beyond ~4000px on a side) may load slowly as a
-  single file. If that becomes a problem, look at Leaflet's tile layers
-  instead of `imageOverlay`.
-- Both editor tools (`polygon-editor.html`, `label-editor.html`) are
-  intentionally rough — they're for you, not end users.
-- The landscape toggle's chroma-key threshold (`WHITE_THRESHOLD` in
-  `src/landscapeLayer.js`) assumes floor plan backgrounds stay near-white.
-  If a future floor plan export uses a tinted or textured background, that
-  threshold will need revisiting.
