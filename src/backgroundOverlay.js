@@ -22,7 +22,7 @@ const IMAGE_PATH = "assets/site-landscape.png";
 const IMAGE_WIDTH_PX = 4000;
 const IMAGE_HEIGHT_PX = 3297;
 const ANCHOR_X = 116.96;
-const ANCHOR_Y = -189.28;
+const ANCHOR_Y = -145;
 const SCALE = 0.19799;
 
 export function addBackgroundImage(map) {

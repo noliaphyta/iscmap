@@ -2,14 +2,16 @@ import { styleForCategory } from "./mapConfig.js";
 import { polygonToLatLngs, pixelToLatLng } from "./pixelCRS.js";
 import { iconPathFor } from "./icons.js";
 
-// Rest/active polygon styles - rest is outline-only (near-transparent
-// fill) so the category color doesn't overpower the map; the fill only
-// appears on hover, or permanently for the click-selected room.
+// Rest/active polygon styles - both states now render as solid, opaque
+// fills (category color is meant to be clearly readable at rest, not
+// just on hover). Rest stops just short of full opacity so hover/
+// selection (which goes to 1) still reads as a distinct, brighter state
+// - `active` also gets a heavier outline for the same reason.
 // `weight` is the outline thickness in screen pixels (fixed regardless of
 // zoom level - it does not scale with the room geometry). Adjust these
 // two numbers directly to change line thickness app-wide.
-const REST_STYLE = { weight: 1, fillOpacity: 0.35 };
-const ACTIVE_STYLE = { weight: 3, fillOpacity: 0.75 };
+const REST_STYLE = { weight: 1, fillOpacity: 0.9 };
+const ACTIVE_STYLE = { weight: 3, fillOpacity: 1 };
 
 // Area-weighted polygon centroid - a plain vertex average misplaces labels
 // on L-shaped/notched rooms (pulls them toward whichever corner has more

@@ -1,0 +1,343 @@
+/* Styles specific to annotate.html. Reuses main.css's custom properties
+   (--bg/--ink/--border/--shadow/--yellow/--red/--blue) and its poster-style
+   panel chrome by pattern (flat, squared, drop-shadowed), but doesn't touch
+   or override any of main.css's own selectors - this file only adds new
+   ones for this page's own elements. */
+
+.annotate-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: var(--ink);
+  color: var(--bg);
+  padding: 0.2rem 0.4rem;
+  vertical-align: middle;
+}
+
+/* --- shared panel chrome for the tool's own panels --- */
+.tool-panel {
+  width: 230px;
+  background: var(--bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  padding: 0.85rem 1rem;
+  font-size: 0.8rem;
+}
+
+.tool-panel h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* mode-toolbar + recolor-panel stack top-left, growing downward - flex
+   handles the stacking so nothing needs a guessed pixel offset (mirrors
+   how #controls stacks on the opposite corner in main.css). */
+#tools-left {
+  position: absolute;
+  top: calc(4.6rem + env(safe-area-inset-top));
+  left: calc(1.1rem + env(safe-area-inset-left));
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-height: calc(100dvh - 5.7rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+#data-panel {
+  position: absolute;
+  left: calc(1.1rem + env(safe-area-inset-left));
+  bottom: calc(1.1rem + env(safe-area-inset-bottom));
+  z-index: 600;
+}
+
+/* --- mode buttons: one per row, active one filled in like .floor-btn.active --- */
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+.mode-btn:last-child { margin-bottom: 0; }
+
+.mode-btn .mode-key {
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.6;
+  margin-left: auto;
+}
+
+.mode-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mode-btn:not(.active):hover {
+    background: var(--yellow);
+  }
+}
+
+/* --- recolor-by-category panel --- */
+#recolor-panel select,
+#recolor-panel input[type="color"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.78rem;
+  border: 1.5px solid var(--ink);
+  background: var(--bg);
+  color: var(--ink);
+  padding: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+#recolor-panel input[type="color"] {
+  padding: 0.15rem;
+  height: 2.1rem;
+  cursor: pointer;
+}
+
+.tool-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  color: var(--ink-dim);
+  margin-bottom: 0.6rem;
+}
+
+.tool-btn {
+  display: block;
+  width: 100%;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.5rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.tool-btn.secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+}
+
+.tool-btn.danger {
+  background: var(--red);
+}
+
+.tool-btn + .tool-btn {
+  margin-top: 0.5rem;
+}
+
+/* --- data panel (export/import/clear) --- */
+#data-panel input[type="file"] {
+  display: none;
+}
+
+.data-note {
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  margin: 0.55rem 0 0;
+  line-height: 1.35;
+}
+
+/* --- status bar: contextual instructions for the active mode. Docked
+   top-center (not bottom) since #data-panel already owns bottom-left and,
+   on narrow/mobile widths, a bottom-center bar would overlap it. --- */
+.status-bar {
+  position: absolute;
+  top: calc(4.6rem + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 550;
+  background: var(--ink);
+  color: var(--bg);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow);
+  padding: 0.55rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  max-width: 60vw;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* --- popover: appears near a click to enter a note's text/icon or a
+   room's paint color. Positioned via inline left/top set in JS. --- */
+.popover {
+  position: absolute;
+  z-index: 900;
+  width: 240px;
+  background: var(--bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  padding: 0.9rem 1rem;
+  font-size: 0.8rem;
+}
+
+.popover h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.popover label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: 0.6rem 0 0.3rem;
+}
+
+.popover label:first-of-type {
+  margin-top: 0;
+}
+
+.popover input[type="text"],
+.popover input[type="color"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.85rem;
+  border: 1.5px solid var(--ink);
+  background: var(--bg);
+  color: var(--ink);
+  padding: 0.4rem 0.5rem;
+}
+
+.popover input[type="color"] {
+  padding: 0.15rem;
+  height: 2.1rem;
+  cursor: pointer;
+}
+
+.popover-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.popover-actions .tool-btn {
+  margin-top: 0;
+  flex: 1 1 0;
+}
+
+/* --- icon picker grid inside the note popover --- */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.3rem;
+  max-height: 132px;
+  overflow-y: auto;
+  border: 1.5px solid var(--ink);
+  padding: 0.35rem;
+}
+
+.icon-grid button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  background: var(--bg);
+  border: 1.5px solid transparent;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+
+.icon-grid button.selected {
+  border-color: var(--blue);
+  background: #eaf1ff;
+}
+
+.icon-grid button img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.icon-grid button.none-option {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+
+/* --- on-map note marker --- */
+.map-note {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg);
+  border: 1.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 0.2rem 0.45rem;
+  font-family: "Jost", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.map-note img {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.map-note.icon-only {
+  padding: 0.3rem;
+}
+
+/* --- painted-room overlay (a second polygon drawn on top of the
+   existing, untouched room polygon - see annotateMain.js) --- */
+.painted-room {
+  pointer-events: none;
+}
+
+/* --- read-only reference labels on the tool's own base room layer
+   (deliberately not the main app's room-number-label styling - this is a
+   separate, simpler layer; see annotateMain.js renderBaseRooms) --- */
+.base-room-label span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: "Jost", sans-serif;
+  font-size: 9px;
+  color: #000000;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0 2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* --- cursor feedback per mode --- */
+#map.mode-paint,
+#map.mode-note,
+#map.mode-erase {
+  cursor: crosshair;
+}
