@@ -13,6 +13,12 @@ const map = L.map("map", {
   maxZoom: 3,
   zoomSnap: 0.25,
   attributionControl: false,
+  // Canvas instead of the default SVG renderer: with ~300 room polygons on
+  // screen per floor, SVG means Leaflet rewrites 300 individual <path>
+  // `d` attributes on every zoom frame. Canvas draws them all into one
+  // element per frame instead, which is what actually removes the
+  // stutter (this matters far more than any per-polygon style tweak).
+  renderer: L.canvas({ padding: 0.5 }),
 });
 
 addBackgroundImage(map);

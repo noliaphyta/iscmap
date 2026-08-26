@@ -5,6 +5,9 @@ import { iconPathFor } from "./icons.js";
 // Rest/active polygon styles - rest is outline-only (near-transparent
 // fill) so the category color doesn't overpower the map; the fill only
 // appears on hover, or permanently for the click-selected room.
+// `weight` is the outline thickness in screen pixels (fixed regardless of
+// zoom level - it does not scale with the room geometry). Adjust these
+// two numbers directly to change line thickness app-wide.
 const REST_STYLE = { weight: 1, fillOpacity: 0.35 };
 const ACTIVE_STYLE = { weight: 3, fillOpacity: 0.75 };
 
@@ -78,6 +81,23 @@ function rescaleLabels(map) {
   }
 }
 
+// map fires "zoom" continuously during an animated/pinched zoom (not just
+// once at the end), and rescaleLabels does a synchronous inline-style
+// write - forcing a layout recalc - for every one of ~300 labels. Left
+// unthrottled that's hundreds of forced reflows per gesture. Coalescing
+// to one rescale per animation frame keeps the visual result identical
+// (still updates continuously through the zoom) while cutting the actual
+// DOM-write work to what the browser can paint anyway.
+let rescaleQueued = false;
+function scheduleRescale(map) {
+  if (rescaleQueued) return;
+  rescaleQueued = true;
+  requestAnimationFrame(() => {
+    rescaleLabels(map);
+    rescaleQueued = false;
+  });
+}
+
 // Renders every given feature (already filtered to "current level, both
 // buildings" by the caller) as a room polygon + label/icon marker into
 // layerGroup. Features with null geometry are skipped entirely - they
@@ -109,6 +129,15 @@ export function renderRooms(map, layerGroup, features, { onRoomClick } = {}) {
       color: strokeColor,
       fillColor: style.fill,
       className: "room-polygon",
+      // Default smoothFactor (1.0) applies Douglas-Peucker simplification
+      // to keep SVG path redraws cheap at low zoom - but on notched/
+      // L-shaped rooms it can simplify away enough vertices that a
+      // stepped edge collapses into a single diagonal line. Rooms here
+      // average ~25 vertices (max 283), and rendering now goes through
+      // Canvas (see main.js) rather than per-polygon SVG paths, so the
+      // full vertex detail is affordable - 0 disables simplification
+      // entirely.
+      smoothFactor: 0,
       ...REST_STYLE,
     });
     polygon.on("mouseover", () => {
@@ -168,7 +197,7 @@ export function renderRooms(map, layerGroup, features, { onRoomClick } = {}) {
 
   rescaleLabels(map);
   if (zoomHandlerMap !== map) {
-    map.on("zoom zoomend", () => rescaleLabels(map));
+    map.on("zoom zoomend", () => scheduleRescale(map));
     zoomHandlerMap = map;
   }
 
