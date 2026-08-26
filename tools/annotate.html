@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
+  <!-- This page lives one directory below the project root (tools/), but
+       every relative reference below - the stylesheet/favicon hrefs, the
+       "src/annotateMain.js" script, and the "data/rooms.geojson",
+       "assets/site-landscape.png", "icons/*.svg" paths that
+       geoData.js/backgroundOverlay.js/icons.js (and this page's own JS)
+       fetch or set as img src at runtime - is written root-relative, i.e.
+       exactly as it appears in index.html at the project root. Without
+       this <base>, the browser resolves all of those against tools/
+       instead, so literally nothing on this page loads: no CSS, no
+       script, no geojson, no icons. Rebasing resolution to the parent
+       directory makes every one of those paths correct without having to
+       special-case this one page in any shared module. -->
+  <base href="../" />
   <title>ISC Map — Annotate</title>
 
   <link rel="icon" type="image/png" href="assets/icon.png" />

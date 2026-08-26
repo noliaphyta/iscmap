@@ -187,14 +187,23 @@ function renderNotes() {
   for (const note of annotations.notes) {
     if (note.level !== currentLevel) continue;
 
-    const iconHtml = note.icon ? `<img src="icons/${note.icon}" alt="" draggable="false" />` : "";
+    // note.icon/note.color come from annotations state, which can be
+    // populated by importAnnotations() from an arbitrary JSON file someone
+    // else handed you (see "Import JSON" in the data panel) - not just
+    // from this page's own color-picker/icon-grid UI. Without escapeAttr,
+    // a crafted icon/color value in that file can break out of the src=/
+    // style= attribute it's interpolated into and inject arbitrary HTML
+    // (e.g. an icon value of `x.svg" onerror="...`), since this is all
+    // built via innerHTML rather than DOM APIs. escapeAttr neutralizes
+    // that regardless of where the value came from.
+    const iconHtml = note.icon ? `<img src="icons/${escapeAttr(note.icon)}" alt="" draggable="false" />` : "";
     const textHtml = note.text ? `<span>${escapeHtml(note.text)}</span>` : "";
     const iconOnly = note.icon && !note.text;
 
     const marker = L.marker(pixelToLatLng(note.x, note.y), {
       icon: L.divIcon({
         className: "map-note-marker",
-        html: `<div class="map-note${iconOnly ? " icon-only" : ""}" style="border-color:${note.color || "#000000"}">${iconHtml}${textHtml}</div>`,
+        html: `<div class="map-note${iconOnly ? " icon-only" : ""}" style="border-color:${escapeAttr(note.color || "#000000")}">${iconHtml}${textHtml}</div>`,
         iconSize: [0, 0],
       }),
       draggable: true,
@@ -249,7 +258,7 @@ function openPaintPopover(feature, latlng) {
   popoverEl.innerHTML = `
     <h3>${escapeHtml(feature.properties.room_number || "Room")}</h3>
     <label for="paint-color">Color</label>
-    <input type="color" id="paint-color" value="${current}" />
+    <input type="color" id="paint-color" value="${escapeAttr(current)}" />
     <div class="popover-actions">
       <button type="button" class="tool-btn secondary" id="paint-clear">Clear</button>
       <button type="button" class="tool-btn" id="paint-apply">Apply</button>
@@ -293,7 +302,7 @@ function showNotePopover(note, latlng, isNew) {
     <label>Icon</label>
     ${iconGridHtml(selectedIcon)}
     <label for="note-color">Color</label>
-    <input type="color" id="note-color" value="${note.color || "#000000"}" />
+    <input type="color" id="note-color" value="${escapeAttr(note.color || "#000000")}" />
     <div class="popover-actions">
       ${isNew ? "" : `<button type="button" class="tool-btn danger" id="note-delete">Delete</button>`}
       <button type="button" class="tool-btn secondary" id="note-cancel">Cancel</button>
@@ -495,6 +504,48 @@ function exportAnnotations() {
   URL.revokeObjectURL(url);
 }
 
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+// Imported JSON is arbitrary user-supplied data (see importAnnotations
+// below) - this coerces it down to the exact shape the rest of the app
+// assumes (rooms: string -> "#rrggbb"; notes: array of well-typed
+// objects with icon restricted to this tool's own icon set), dropping
+// anything that doesn't fit rather than trusting the file's structure.
+// escapeAttr at the render call sites (see renderNotes/openPaintPopover/
+// showNotePopover) is what actually prevents attribute-breakout HTML
+// injection from a crafted value; this is a second, independent layer
+// that keeps malformed values (wrong types, bogus colors, made-up icon
+// filenames) from ever reaching state or rendering in the first place.
+function sanitizeImportedAnnotations(parsed) {
+  const rooms = {};
+  if (parsed.rooms && typeof parsed.rooms === "object") {
+    for (const [spaceId, color] of Object.entries(parsed.rooms)) {
+      if (typeof color === "string" && HEX_COLOR_RE.test(color)) {
+        rooms[spaceId] = color;
+      }
+    }
+  }
+
+  const notes = [];
+  if (Array.isArray(parsed.notes)) {
+    for (const n of parsed.notes) {
+      if (!n || typeof n !== "object") continue;
+      if (typeof n.x !== "number" || typeof n.y !== "number") continue;
+      notes.push({
+        id: typeof n.id === "string" && n.id ? n.id : `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        level: typeof n.level === "string" ? n.level : null,
+        x: n.x,
+        y: n.y,
+        text: typeof n.text === "string" ? n.text.slice(0, 60) : "",
+        color: typeof n.color === "string" && HEX_COLOR_RE.test(n.color) ? n.color : "#000000",
+        icon: typeof n.icon === "string" && ICONS.includes(n.icon) ? n.icon : null,
+      });
+    }
+  }
+
+  return { version: 1, rooms, notes };
+}
+
 function importAnnotations(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -502,7 +553,7 @@ function importAnnotations(e) {
   reader.onload = () => {
     try {
       const parsed = JSON.parse(reader.result);
-      annotations = { version: 1, rooms: parsed.rooms || {}, notes: parsed.notes || [] };
+      annotations = sanitizeImportedAnnotations(parsed);
       saveAnnotations();
       renderPaintedRooms();
       renderNotes();
