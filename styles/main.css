@@ -36,6 +36,16 @@
   background: var(--bg);
 }
 
+/* The site-landscape.png (see backgroundOverlay.js, rendered into its own
+   "background" Leaflet pane - class name "leaflet-background-pane" is
+   Leaflet's own convention of "leaflet-" + pane name + "-pane") is a photo-
+   real render authored for a light backdrop. Left at full brightness it's
+   glaring against the dark theme's near-black map background, so dim it
+   to sit quietly behind the room polygons instead. */
+[data-theme="dark"] .leaflet-background-pane img {
+  filter: brightness(0.55);
+}
+
 * { box-sizing: border-box; }
 
 /* Removes the default grey/blue flash box tapped buttons/links show on
@@ -44,6 +54,23 @@
    deliberate :active/.active state instead. */
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* App-wide: a drag gesture anywhere (panning the map, dragging across a
+   button/label/panel) should never fall through to the browser's native
+   text/image selection. Previously this was only set piecemeal on a few
+   label classes (.room-icon, .room-number-label), so dragging across the
+   header, control buttons, search results, legend, or info panel text
+   still triggered a native selection highlight. Setting it once here,
+   app-wide, covers all of it; -webkit-user-drag stops the same thing from
+   happening via an image drag-out gesture specifically. */
+html, body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
 }
 
 html {
@@ -223,6 +250,10 @@ header.site-header h1 {
   .theme-toggle-btn:hover {
     background: var(--yellow);
   }
+
+  .landscape-toggle-btn:hover {
+    background: var(--yellow);
+  }
 }
 
 .floor-btn.active {
@@ -317,6 +348,25 @@ header.site-header h1 {
 }
 
 .theme-toggle-btn {
+  width: 88px;
+  background: var(--bg);
+  border: var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  padding: 0.5rem 0.3rem;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-align: center;
+  cursor: pointer;
+}
+
+.landscape-toggle-btn {
   width: 88px;
   background: var(--bg);
   border: var(--border);

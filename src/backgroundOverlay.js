@@ -25,6 +25,9 @@ const ANCHOR_X = 116.96;
 const ANCHOR_Y = -145;
 const SCALE = 0.19799;
 
+// Returns { overlay, setVisible, isVisible } so callers (see main.js's
+// landscape toggle button) can show/hide the image without tearing down
+// and recreating the pane/overlay on every click.
 export function addBackgroundImage(map) {
   // A dedicated pane pinned below Leaflet's default overlayPane (z-index
   // 400, where the room polygons live) guarantees the image stays behind
@@ -45,5 +48,20 @@ export function addBackgroundImage(map) {
   // An imageOverlay is geo-referenced (not a screen-fixed element), so it
   // pans/zooms with the map automatically - no extra wiring needed for
   // "zoomed with it".
-  return L.imageOverlay(IMAGE_PATH, bounds, { pane: "background" }).addTo(map);
+  const overlay = L.imageOverlay(IMAGE_PATH, bounds, { pane: "background" }).addTo(map);
+
+  let visible = true;
+
+  function setVisible(next) {
+    visible = next;
+    // Toggle the pane itself (rather than add/remove the overlay layer)
+    // so repeated toggling never re-fetches/re-decodes the image.
+    map.getPane("background").style.display = visible ? "" : "none";
+  }
+
+  function isVisible() {
+    return visible;
+  }
+
+  return { overlay, setVisible, isVisible };
 }

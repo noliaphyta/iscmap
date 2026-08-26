@@ -29,14 +29,20 @@ function resolveInitialTheme() {
   );
 }
 
-export function createThemeToggle() {
+// onThemeChange is called *after* data-theme has been flipped on <html>,
+// so anything that reads a --theme-dependent computed style (e.g.
+// roomLayer.js's --ink-based strokeColor, captured once per renderRooms
+// call rather than live) gets a chance to re-render against the fresh
+// value. Without this, room outlines silently keep whatever color was
+// current at the last floor switch until the next one happens to occur.
+export function createThemeToggle({ onThemeChange } = {}) {
   const root = document.createElement("button");
   root.className = "theme-toggle-btn";
   root.type = "button";
 
   let theme = resolveInitialTheme();
 
-  function applyTheme(next) {
+  function applyTheme(next, { notify = true } = {}) {
     theme = next;
     document.documentElement.setAttribute("data-theme", theme);
     try {
@@ -49,13 +55,18 @@ export function createThemeToggle() {
     root.textContent = theme === "dark" ? "LIGHT MODE" : "DARK MODE";
     root.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
     root.setAttribute("aria-pressed", String(theme === "dark"));
+    if (notify && onThemeChange) onThemeChange(theme);
   }
 
   root.addEventListener("click", () => {
     applyTheme(theme === "dark" ? "light" : "dark");
   });
 
-  applyTheme(theme);
+  // Suppress the callback on this initial call: it only confirms/re-applies
+  // whatever theme index.html's inline anti-flash script already set
+  // pre-paint (see resolveInitialTheme above), and at this point in
+  // main.js's init() nothing has rendered yet for onThemeChange to re-render.
+  applyTheme(theme, { notify: false });
 
   return { root };
 }

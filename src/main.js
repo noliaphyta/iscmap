@@ -21,13 +21,14 @@ const map = L.map("map", {
   renderer: L.canvas({ padding: 0.5 }),
 });
 
-addBackgroundImage(map);
+const background = addBackgroundImage(map);
 
 const currentRoomLayerGroup = L.layerGroup().addTo(map);
 let hasFit = false; // only auto-fit on the very first level load - once someone
                      // is panned/zoomed in, switching floors shouldn't reset them
 let currentBounds = null; // bounds of the level currently on screen, for the reset-view button
 let currentPolyById = new Map(); // space_id -> L.polygon for the level on screen, for search selection
+let currentFeatures = null; // features for the level on screen, so theme toggle can re-render without a full loadLevel (see rerenderCurrentLevel)
 
 // Every floor plan used to share one fixed pixel canvas, so minZoom was the
 // same everywhere. Now that bounds come from each level's own data bbox,
@@ -100,8 +101,26 @@ async function init() {
     return;
   }
 
+  // roomLayer.js's renderRooms captures the polygon stroke color once per
+  // call (read from the live --ink custom property), so a theme toggle
+  // needs *something* to re-run renderRooms against the level currently on
+  // screen - otherwise the outlines silently keep whatever color was
+  // current at the last floor switch until the next one happens to occur.
+  // This intentionally re-renders in place (no re-fit, no bounds/minZoom
+  // recompute) and drops the current selection highlight, which is an
+  // acceptable, barely-noticeable reset for what's just a chrome toggle.
+  function rerenderCurrentLevel() {
+    if (!currentFeatures) return;
+    currentRoomLayerGroup.clearLayers();
+    clearSelection();
+    currentPolyById = renderRooms(map, currentRoomLayerGroup, currentFeatures, {
+      onRoomClick: (props) => updateInfoPanel(props),
+    });
+  }
+
   function loadLevel(level) {
     const features = geo.featuresForLevel(level);
+    currentFeatures = features;
     currentBounds = boundsForFeatures(features);
     updateMinZoom(currentBounds);
 
@@ -131,8 +150,25 @@ async function init() {
   document.getElementById("controls").appendChild(panel.root);
 
   // --- theme toggle ---
-  const themeToggle = createThemeToggle();
+  const themeToggle = createThemeToggle({ onThemeChange: rerenderCurrentLevel });
   document.getElementById("controls").appendChild(themeToggle.root);
+
+  // --- landscape background toggle ---
+  const landscapeToggle = document.createElement("button");
+  landscapeToggle.className = "landscape-toggle-btn";
+  landscapeToggle.type = "button";
+  function renderLandscapeToggle() {
+    const visible = background.isVisible();
+    landscapeToggle.textContent = visible ? "HIDE LANDSCAPE" : "SHOW LANDSCAPE";
+    landscapeToggle.setAttribute("aria-label", visible ? "Hide site landscape image" : "Show site landscape image");
+    landscapeToggle.setAttribute("aria-pressed", String(visible));
+  }
+  landscapeToggle.addEventListener("click", () => {
+    background.setVisible(!background.isVisible());
+    renderLandscapeToggle();
+  });
+  renderLandscapeToggle();
+  document.getElementById("controls").appendChild(landscapeToggle);
 
   // --- reset view control ---
   const resetBtn = document.createElement("button");
