@@ -17,42 +17,31 @@ export const GEOJSON_PATH = "data/rooms.geojson";
 // spaces -> hyphens) - e.g. "Laboratory Facilities" -> "laboratory-
 // facilities".
 //
-// Assignment follows the Brand Hub's usage rules, weighted against how
-// much of the actual floor-plan area each category covers (see
-// data/rooms.geojson):
-//   - Office Facilities + Circulation (~46% of rooms) get literal Primary
-//     Palette colors (W&M Green, W&M Silver) - the two biggest categories
-//     carry the brand's core identity.
-//   - Laboratory Facilities, Building Services, Mechanical, and Support
-//     (~44% combined) get Secondary Greens. The Brand Hub describes these
-//     as part of the Primary system ("supported by a secondary set of
-//     complementary greens"), so combined with the above this keeps the
-//     map's dominant impression solidly green - comfortably within/above
-//     the "70-80% Primary Palette" guideline.
-//   - The remaining low-frequency categories (General Use, Special Use,
-//     Classroom Facilities, Study Facilities - ~9.5% combined) get
-//     Tertiary Palette colors for maximum visual distinction where it's
-//     needed most (small floor-plan footprints), while staying under the
-//     Brand Hub's 10-15% ceiling on Tertiary usage.
-// W&M Gold and Spirit Gold are both deliberately unused here: Gold is
-// reserved for genuine brand moments rather than a room-category fill,
-// and mixing it with Spirit Gold is explicitly against brand rules.
+// Assignment prioritizes perceptual distinction between adjacent room
+// polygons over strict palette-tier grouping (revised from an earlier
+// version that clustered too many categories into near-identical dark
+// greens). Colors are still sourced only from the Brand Hub palette, and
+// every design still includes W&M Green (Office Facilities) or W&M Gold
+// (Building Services), satisfying the Brand Hub's "never omit Green or
+// Gold" rule. Spirit Gold is deliberately unused so it's never paired
+// with W&M Gold in the same composition, per the Brand Hub's explicit
+// restriction.
 export const CATEGORY_STYLE = {
-  // --- Primary Palette (dominant categories) ---
+  // --- Primary Palette ---
   "office-facilities":    { fill: "#004E38", label: "Office Facilities" },    // W&M Green
   "circulation":           { fill: "#D8DCDB", label: "Circulation" },          // W&M Silver
 
-  // --- Secondary Greens (part of the Primary system) ---
-  "laboratory-facilities":{ fill: "#76A190", label: "Laboratory Facilities" },// Patina
-  "building-services":    { fill: "#28463D", label: "Building Services" },    // Griffin Green
-  "mechanical":            { fill: "#00231B", label: "Mechanical" },           // Dark Green
+  // --- Secondary Greens ---
   "support":               { fill: "#789D4A", label: "Support" },              // Moss
+  "special-use":           { fill: "#B8DDB1", label: "Special Use" },          // Sage
 
-  // --- Tertiary Palette (used sparingly, smallest-footprint categories) ---
+  // --- Tertiary Palette ---
+  "laboratory-facilities":{ fill: "#00677E", label: "Laboratory Facilities" },// Marine Blue
+  "building-services":    { fill: "#846838", label: "Building Services" },    // W&M Gold (ADA)
+  "mechanical":            { fill: "#06263B", label: "Mechanical" },           // Midnight Blue
   "general-use":           { fill: "#964A37", label: "General Use" },          // Brick Red
-  "special-use":           { fill: "#673E65", label: "Special Use" },          // Royal Purple
-  "classroom-facilities":  { fill: "#00677E", label: "Classroom Facilities" }, // Marine Blue
-  "study-facilities":      { fill: "#85B8C7", label: "Study Facilities" },     // River Blue
+  "classroom-facilities":  { fill: "#85B8C7", label: "Classroom Facilities" }, // River Blue
+  "study-facilities":      { fill: "#76A190", label: "Study Facilities" },     // Patina
 };
 
 // Unclassified rooms (empty/unrecognized Category) render with no fill at

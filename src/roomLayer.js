@@ -13,6 +13,30 @@ import { iconPathFor } from "./icons.js";
 const REST_STYLE = { weight: 1, fillOpacity: 0.9 };
 const ACTIVE_STYLE = { weight: 3, fillOpacity: 1 };
 
+// Mirrors the same (hover: hover) and (pointer: fine) check already used
+// in main.css for :hover rules - computed once since a device's hover
+// capability doesn't change mid-session. Gates whether polygons get
+// mouseover/mouseout listeners at all (see the polygon loop below).
+//
+// This matters a lot more than a cosmetic parity thing: with the Canvas
+// renderer (see main.js), every polygon.setStyle() call - including the
+// ones inside these two listeners - forces a full canvas redraw of every
+// room on the current floor, not just the one polygon whose style
+// changed. On a touch device, a single drag-to-pan gesture continuously
+// fires pointer-move events as the finger crosses room boundaries, which
+// is exactly what triggers mouseover/mouseout - so panning across, say,
+// 6 rooms was firing 12 setStyle calls (and therefore 12 full-floor
+// canvas redraws) over the course of one drag, competing with the browser
+// for the same frame budget the pan itself needs. Touch has no real
+// "hover" concept to begin with (there's no cursor sitting still over a
+// room), so skipping these listeners entirely on non-hover devices is a
+// pure win: panning stops fighting itself, and nothing checks or expects
+// a hover-preview on touch anyway (click/tap selection is unaffected -
+// that listener is always attached, below).
+const SUPPORTS_HOVER =
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
 // Area-weighted polygon centroid - a plain vertex average misplaces labels
 // on L-shaped/notched rooms (pulls them toward whichever corner has more
 // vertices instead of the room's actual visual center), which this data
@@ -142,12 +166,14 @@ export function renderRooms(map, layerGroup, features, { onRoomClick } = {}) {
       smoothFactor: 0,
       ...REST_STYLE,
     });
-    polygon.on("mouseover", () => {
-      if (props.space_id !== selectedSpaceId) polygon.setStyle(ACTIVE_STYLE);
-    });
-    polygon.on("mouseout", () => {
-      if (props.space_id !== selectedSpaceId) polygon.setStyle(REST_STYLE);
-    });
+    if (SUPPORTS_HOVER) {
+      polygon.on("mouseover", () => {
+        if (props.space_id !== selectedSpaceId) polygon.setStyle(ACTIVE_STYLE);
+      });
+      polygon.on("mouseout", () => {
+        if (props.space_id !== selectedSpaceId) polygon.setStyle(REST_STYLE);
+      });
+    }
     polygon.on("click", () => {
       selectRoom(polyById, props.space_id);
       if (onRoomClick) onRoomClick(props);
@@ -218,6 +244,7 @@ export function selectRoom(polyById, spaceId) {
 }
 
 export function clearSelection() {
+  if (selectedPolygon) selectedPolygon.setStyle(REST_STYLE);
   selectedSpaceId = null;
   selectedPolygon = null;
 }

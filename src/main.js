@@ -70,7 +70,14 @@ function escapeHtml(str) {
 }
 
 function updateInfoPanel(props, { unmapped = false } = {}) {
+  // Tap-to-clear (see the click listener below) fully hides the panel to
+  // reclaim its screen space rather than reverting it to the empty
+  // placeholder - so anything that puts real content back in (a room
+  // click, a search result, or the floor-switch reset to the placeholder
+  // text below) needs to explicitly un-hide it again.
+  infoPanel.hidden = false;
   if (!props) {
+    infoPanel.classList.remove("has-room");
     infoPanel.innerHTML = `<p class="info-empty">Search for a room, or click a room on the map to see details here.</p>`;
     return;
   }
@@ -82,14 +89,33 @@ function updateInfoPanel(props, { unmapped = false } = {}) {
   const unmappedNote = unmapped
     ? `<p class="info-detail info-dim">No shape data for this room, so it can't be shown on the map.</p>`
     : "";
+  infoPanel.classList.add("has-room");
   infoPanel.innerHTML = `
     <h3>${escapeHtml(props.room_number || "(no code)")}</h3>
     <p class="info-category">${escapeHtml(category)}${escapeHtml(subcategory)}</p>
     ${description}
     ${unmappedNote}
+    <p class="info-hint">Tap to hide</p>
   `;
 }
 updateInfoPanel(null);
+
+// Tap/click anywhere on the panel to dismiss it - only when it's actually
+// showing a room (the "has-room" class from updateInfoPanel above), so
+// tapping the empty placeholder text is a no-op. Unlike updateInfoPanel
+// (null), this hides the panel outright rather than swapping back to the
+// placeholder text, so the space it occupied is freed up instead of
+// staying on screen with nothing useful in it. clearSelection() (see
+// roomLayer.js) also resets the polygon's own highlight style, so the map
+// and panel never disagree about what's selected after this. The next
+// room click or search result re-shows the panel via updateInfoPanel's
+// own `infoPanel.hidden = false` above.
+infoPanel.addEventListener("click", () => {
+  if (!infoPanel.classList.contains("has-room")) return;
+  clearSelection();
+  infoPanel.classList.remove("has-room");
+  infoPanel.hidden = true;
+});
 
 async function init() {
   let geo;

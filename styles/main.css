@@ -417,6 +417,31 @@ header.site-header h1 {
   border-radius: 0;
   padding: 0.9rem 1.1rem;
   border-left: 6px solid var(--red);
+  cursor: pointer;
+  /* html/body already lock down touch-action:none page-wide, which
+     already suppresses the browser's native double-tap-to-zoom gesture
+     here too - this is a belt-and-suspenders explicit declaration on the
+     element itself (see main.js's tap-to-hide handler, added right below
+     this element in the DOM) so a fast double-tap to dismiss the panel
+     can never be misread as a zoom gesture, regardless of how any given
+     mobile browser resolves touch-action across an ancestor chain that
+     doesn't explicitly set it. "manipulation" (not "none") so a drag
+     gesture that starts on the panel can still fall through to pan the
+     map underneath rather than getting stuck. */
+  touch-action: manipulation;
+}
+
+#info-panel.has-room:active {
+  background: var(--yellow);
+}
+
+.info-hint {
+  margin: 0.5rem 0 0;
+  color: var(--ink-dim);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 #info-panel h3 {
@@ -502,6 +527,42 @@ header.site-header h1 {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* --- mobile breakpoint ---
+   header.site-header (top-left, "ISC MAP") and #controls' search box
+   (top-right, 240px wide) are both absolutely positioned with no
+   awareness of each other's width. On viewports under ~600px (any phone
+   in portrait) the two run into each other in the middle - the title's
+   font-size and the search box's fixed 240px width are what actually
+   determine where each one ends, so those are the two values that need
+   to shrink. 600px is chosen generously above typical phone widths
+   (~360-430px) so this reliably kicks in before the overlap does, while
+   tablets/desktop above it keep the full-size layout untouched. */
+@media (max-width: 600px) {
+  header.site-header {
+    padding: calc(0.75rem + env(safe-area-inset-top)) 0.7rem 0.6rem calc(0.7rem + env(safe-area-inset-left));
+    gap: 0.4rem;
+  }
+
+  header.site-header h1 {
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* Leaflet's zoom control top offset was tuned against the full-size
+     header - shrink it to match so it doesn't leave an oversized gap. */
+  .leaflet-top.leaflet-left {
+    top: 3.3rem;
+  }
+
+  /* min(150px, 44vw) instead of a flat px value: 150px is roomy enough on
+     a typical ~375-430px phone, but on the narrowest devices (~320px)
+     even 150px would start crowding the title again - 44vw keeps it
+     proportional down to those widths too. */
+  .search-box {
+    width: min(150px, 44vw);
+  }
 }
 
 /* --- legend / key panel (bottom-right) ---
