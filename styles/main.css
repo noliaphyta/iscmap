@@ -511,6 +511,58 @@ header.site-header h1 {
   pointer-events: none;
 }
 
+/* --- on-map note marker (published wayfinding/callout notes) ---
+   Shared by tools/annotate.html (the authoring tool - see
+   src/annotateMain.js's renderNotes) and index.html's own read-only
+   rendering of the published overlay (see src/notesLayer.js,
+   src/annotations.js) - both build these markers as an L.divIcon with
+   iconSize:[0,0], so Leaflet gives the marker a 0x0 wrapper positioned
+   exactly at the note's map coordinate, and the actual visible box has
+   to size itself from inside that. position:absolute (+ left:0; top:0;)
+   is what makes that work: it's the same trick .room-label-inner above
+   and .base-room-label span below use for the exact same 0x0-parent
+   situation. Without it, this was a static block-level flex box whose
+   width resolved against its 0-width containing block instead of
+   shrink-wrapping its own icon+text content - the border collapsed to
+   near-zero while the (still full-size, still visible) icon and text
+   overflowed past it. */
+.map-note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg);
+  border: 1.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 0.2rem 0.45rem;
+  font-family: "Jost", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.map-note img {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.map-note.icon-only {
+  padding: 0.3rem;
+}
+
+/* Published notes (index.html) are read-only - no drag, no click-to-edit
+   - so the pointer cursor from the rule above would be a false
+   affordance. */
+.map-note.published {
+  cursor: default;
+}
+
 .room-icon {
   display: block;
   object-fit: contain;

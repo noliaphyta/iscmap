@@ -10,19 +10,10 @@ import { loadGeoData } from "./geoData.js";
 import { createControlPanel } from "./floorControl.js";
 import { addBackgroundImage } from "./backgroundOverlay.js";
 import { CATEGORY_STYLE, styleForCategory, categoryKey } from "./mapConfig.js";
+import { NOTE_ICONS as ICONS } from "./icons.js";
+import { buildNoteMarker } from "./notesLayer.js";
 
 const STORAGE_KEY = "isc-map-annotations-v1";
-
-// Every icon already in icons/ (used by the main app's own rooms), offered
-// here so a note can use whichever fits - arrows for wayfinding/exits
-// included - rather than this tool inventing new ones.
-const ICONS = [
-  "down-arrow.svg", "uparrow.svg", "leftarrow.svg", "right-arrow.svg",
-  "left-and-down-arrow.svg", "right-and-down-arrow.svg",
-  "marker-circle.svg", "information.svg", "stairs.svg", "elevator.svg",
-  "toilets.svg", "restaurant.svg", "coffee-shop.svg", "waitingroom.svg",
-  "fireextinguisher.svg", "lostandfound.svg",
-];
 
 // --- persistence -----------------------------------------------------
 function loadAnnotations() {
@@ -190,43 +181,31 @@ function renderNotes() {
     // note.icon/note.color come from annotations state, which can be
     // populated by importAnnotations() from an arbitrary JSON file someone
     // else handed you (see "Import JSON" in the data panel) - not just
-    // from this page's own color-picker/icon-grid UI. Without escapeAttr,
-    // a crafted icon/color value in that file can break out of the src=/
-    // style= attribute it's interpolated into and inject arbitrary HTML
-    // (e.g. an icon value of `x.svg" onerror="...`), since this is all
-    // built via innerHTML rather than DOM APIs. escapeAttr neutralizes
-    // that regardless of where the value came from.
-    const iconHtml = note.icon ? `<img src="icons/${escapeAttr(note.icon)}" alt="" draggable="false" />` : "";
-    const textHtml = note.text ? `<span>${escapeHtml(note.text)}</span>` : "";
-    const iconOnly = note.icon && !note.text;
-
-    const marker = L.marker(pixelToLatLng(note.x, note.y), {
-      icon: L.divIcon({
-        className: "map-note-marker",
-        html: `<div class="map-note${iconOnly ? " icon-only" : ""}" style="border-color:${escapeAttr(note.color || "#000000")}">${iconHtml}${textHtml}</div>`,
-        iconSize: [0, 0],
-      }),
-      draggable: true,
-    });
-
-    marker.on("dragend", (e) => {
-      const { x, y } = latLngToPixel(e.target.getLatLng());
-      note.x = x;
-      note.y = y;
-      saveAnnotations();
-    });
-
-    marker.on("click", (e) => {
-      L.DomEvent.stopPropagation(e);
-      if (currentMode === "erase") {
-        if (confirm(`Delete this note?${note.text ? ` "${note.text}"` : ""}`)) {
-          annotations.notes = annotations.notes.filter((n) => n.id !== note.id);
-          saveAnnotations();
-          renderNotes();
+    // from this page's own color-picker/icon-grid UI. buildNoteMarker
+    // (src/notesLayer.js) escapes both before interpolating them into the
+    // marker's innerHTML, guarding against a crafted value (e.g. an icon
+    // of `x.svg" onerror="...`) breaking out of the src=/style= attribute
+    // it's placed into, regardless of where the value came from.
+    const marker = buildNoteMarker(note, {
+      editable: true,
+      onDragEnd: (n, e) => {
+        const { x, y } = latLngToPixel(e.target.getLatLng());
+        n.x = x;
+        n.y = y;
+        saveAnnotations();
+      },
+      onClick: (n, e) => {
+        L.DomEvent.stopPropagation(e);
+        if (currentMode === "erase") {
+          if (confirm(`Delete this note?${n.text ? ` "${n.text}"` : ""}`)) {
+            annotations.notes = annotations.notes.filter((existing) => existing.id !== n.id);
+            saveAnnotations();
+            renderNotes();
+          }
+        } else {
+          openNoteEditor(n);
         }
-      } else {
-        openNoteEditor(note);
-      }
+      },
     });
 
     marker.addTo(noteLayerGroup);
@@ -499,7 +478,7 @@ function exportAnnotations() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "isc-map-annotations.json";
+  a.download = "annotations.json";
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -574,7 +553,7 @@ function renderDataPanel() {
     <button type="button" class="tool-btn secondary" id="import-btn">Import JSON</button>
     <input type="file" id="import-file" accept="application/json" />
     <button type="button" class="tool-btn danger" id="clear-btn">Clear all</button>
-    <p class="data-note">Saved automatically in this browser. Export a backup before clearing browser data or switching devices - this never touches data/rooms.geojson.</p>
+    <p class="data-note">Saved automatically in this browser only - export a backup before clearing browser data or switching devices. To publish for every visitor of the live site: Export, then commit the downloaded <code>annotations.json</code> as <code>data/annotations.json</code> in the repo and push - GitHub Pages serves it from there automatically. This never touches data/rooms.geojson.</p>
   `;
   document.getElementById("export-btn").onclick = exportAnnotations;
   document.getElementById("import-btn").onclick = () => document.getElementById("import-file").click();

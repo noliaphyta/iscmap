@@ -6,6 +6,8 @@ import { createSearchBox } from "./search.js";
 import { loadGeoData } from "./geoData.js";
 import { createThemeToggle } from "./theme.js";
 import { addBackgroundImage } from "./backgroundOverlay.js";
+import { loadPublishedAnnotations } from "./annotations.js";
+import { buildNoteMarker } from "./notesLayer.js";
 
 const map = L.map("map", {
   crs: L.CRS.Simple,
@@ -24,6 +26,7 @@ const map = L.map("map", {
 const background = addBackgroundImage(map);
 
 const currentRoomLayerGroup = L.layerGroup().addTo(map);
+const currentNoteLayerGroup = L.layerGroup().addTo(map);
 let hasFit = false; // only auto-fit on the very first level load - once someone
                      // is panned/zoomed in, switching floors shouldn't reset them
 let currentBounds = null; // bounds of the level currently on screen, for the reset-view button
@@ -119,12 +122,40 @@ infoPanel.addEventListener("click", () => {
 
 async function init() {
   let geo;
+  let published;
   try {
-    geo = await loadGeoData();
+    // Run together, not sequentially - annotations.json is small and
+    // independent of rooms.geojson, so there's no reason to make the
+    // (much larger) room geometry load wait behind it or vice versa. A
+    // missing/unpublished annotations.json resolves to {rooms:{},notes:[]}
+    // rather than rejecting (see annotations.js), so it never becomes the
+    // reason the whole map fails to load.
+    [geo, published] = await Promise.all([loadGeoData(), loadPublishedAnnotations()]);
   } catch (err) {
     console.error("Couldn't load room data", err);
     showError("Couldn't load the campus map data. Check your connection and try again.");
     return;
+  }
+
+  // space_id -> "#rrggbb", handed to renderRooms below so a published
+  // color override takes precedence over the room's default category
+  // color. A plain object survives from annotations.js/JSON, but
+  // roomLayer.js expects a Map (matching how it looks up everything else
+  // by space_id) - converted once here rather than on every renderRooms
+  // call.
+  const colorOverrides = new Map(Object.entries(published.rooms));
+
+  // Renders this level's published notes fresh each time (mirrors how
+  // renderRooms itself is always a full clear-and-rebuild per level, not
+  // an incremental diff) - these are read-only here (no editable/onClick
+  // passed to buildNoteMarker), matching the fact that visitors of the
+  // live site can see published notes but never author them.
+  function renderPublishedNotes(level) {
+    currentNoteLayerGroup.clearLayers();
+    for (const note of published.notes) {
+      if (note.level !== level) continue;
+      buildNoteMarker(note).addTo(currentNoteLayerGroup);
+    }
   }
 
   // roomLayer.js's renderRooms captures the polygon stroke color once per
@@ -141,6 +172,7 @@ async function init() {
     clearSelection();
     currentPolyById = renderRooms(map, currentRoomLayerGroup, currentFeatures, {
       onRoomClick: (props) => updateInfoPanel(props),
+      colorOverrides,
     });
   }
 
@@ -165,7 +197,9 @@ async function init() {
     clearSelection(); // old floor's selected polygon no longer exists once cleared above
     currentPolyById = renderRooms(map, currentRoomLayerGroup, features, {
       onRoomClick: (props) => updateInfoPanel(props),
+      colorOverrides,
     });
+    renderPublishedNotes(level);
 
     panel.render(level);
     updateInfoPanel(null);

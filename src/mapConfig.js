@@ -10,6 +10,14 @@
 // polygons). See src/geoData.js for how this file is loaded and indexed.
 export const GEOJSON_PATH = "data/rooms.geojson";
 
+// The tools/annotate.html tool's published output (room color overrides +
+// notes) - a separate, optional, committed-to-the-repo file, distinct
+// from that tool's own per-browser localStorage draft. Missing entirely
+// (nobody's published anything yet) is a normal state, not an error - see
+// src/annotations.js's loadPublishedAnnotations, which treats a 404 as
+// "nothing published" rather than failing page load.
+export const ANNOTATIONS_PATH = "data/annotations.json";
+
 // Palette pulled from the W&M Brand Hub (wm.edu/brand/visual-brand/color-
 // palette), not arbitrary pastels, so the map reads as on-brand rather
 // than a generic data-viz key. Keys match the geojson's `Category`

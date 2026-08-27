@@ -287,32 +287,10 @@
 }
 
 /* --- on-map note marker --- */
-.map-note {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: var(--bg);
-  border: 1.5px solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
-  padding: 0.2rem 0.45rem;
-  font-family: "Jost", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transform: translate(-50%, -50%);
-}
-
-.map-note img {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  object-fit: contain;
-}
-
-.map-note.icon-only {
-  padding: 0.3rem;
-}
+/* Moved to styles/main.css (imported by both annotate.html and
+   index.html) since production rendering of published notes (see
+   src/notesLayer.js, src/annotations.js) needs this same styling and
+   there's no reason to keep two copies in sync by hand. */
 
 /* --- painted-room overlay (a second polygon drawn on top of the
    existing, untouched room polygon - see annotateMain.js) --- */

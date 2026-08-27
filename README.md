@@ -82,14 +82,17 @@ first (see the table in `src/icons.js`), and only falls back to a
 neither get no icon at all — that's deliberate: a weak or misleading icon
 on a generic office or storage room is worse than none.
 
-**Known gap, not solved by this data:** the old point-feature system also
-covered exit signage (`down-arrow.svg`, `uparrow.svg`, etc.) — directional
-arrows pointing toward the nearest exit. The geojson has no equivalent;
-FAMIS categorizes rooms, not wayfinding points. Those icon files are still
-in `icons/` (unused) in case exit data becomes available later, but nothing
-in this app currently fabricates exit locations or directions from room
-data. If exit wayfinding matters for this app, it needs a separate
-data-collection effort.
+**Known gap, not solved by room data alone:** the old point-feature system
+also covered exit signage (`down-arrow.svg`, `uparrow.svg`, etc.) —
+directional arrows pointing toward the nearest exit. `FAMIS` categorizes
+rooms, not wayfinding points, so nothing here auto-places exit arrows from
+room data, and that's still true. What's new: `tools/annotate.html` (see
+"Publishing annotations" below) lets someone manually drop any icon in
+`icons/` — including the exit-arrow set and `forward-and-left-arrow.svg`/
+`forward-and-right-arrow.svg` — as a standalone note anywhere on the map,
+independent of room data. The full pickable set lives in one place,
+`NOTE_ICONS` in `src/icons.js`, so adding a new `icons/*.svg` file only
+needs updating there to become available in the tool.
 
 ## Open questions
 
@@ -129,6 +132,58 @@ Clicking a room shows its room number, `Category` (plus `SubCategory` if
 present), and `Description`. `Area` and occupancy/vacancy fields are
 deliberately left out as noise for this app's purpose.
 
+## Annotations (published overlay)
+
+`tools/annotate.html` is a standalone authoring page for two things room
+data doesn't cover: overriding a specific room's fill color, and dropping
+freeform icon+text notes anywhere on the map (wayfinding arrows, callouts,
+temporary signage, etc.). It reuses the main app's floor stack, geojson,
+and pixel-coordinate system, but never touches `data/rooms.geojson` or the
+main app's own room polygons/`src/roomLayer.js` — it's fully additive.
+
+**Two separate copies of this data exist at any time**, and it's worth
+being clear about which is which:
+
+- **Your local draft** — everything you paint/place in `annotate.html` is
+  saved automatically to that browser's `localStorage` as you go. Nobody
+  else can see it; it's not shared or synced anywhere on its own, and it's
+  gone if you clear that browser's site data without exporting first.
+- **The published overlay** (`data/annotations.json`) — a plain JSON file
+  committed to the repo like `data/rooms.geojson` is. This is what every
+  visitor of the deployed site actually sees, fetched and rendered by
+  `src/annotations.js` (room color overrides) and `src/notesLayer.js`
+  (notes) from `src/main.js` on every page load. It only changes when
+  someone explicitly publishes an update to it — nothing here auto-syncs
+  from anyone's local draft.
+
+### Publishing an update
+
+1. Open `tools/annotate.html`, make your changes (colors/notes are saved
+   to your browser automatically as you go).
+2. In the "Your annotations" panel, click **Export JSON** — this downloads
+   `annotations.json` (already named to match the path below, so no
+   renaming needed).
+3. Replace `data/annotations.json` in the repo with the downloaded file.
+4. Commit and push. GitHub Pages redeploys automatically — no build/CI
+   step, same as every other change to this repo (see "Deploying" above).
+   `src/annotations.js` fetches with `cache: "no-store"`, so visitors see
+   the update on their very next page load rather than a stale cached
+   copy.
+
+A missing or not-yet-created `data/annotations.json` isn't an error state
+— `loadPublishedAnnotations()` treats a 404 as "nothing published yet" and
+the map renders normally with just its default category colors and no
+notes. The committed placeholder (`{"version":1,"rooms":{},"notes":[]}`)
+exists so a fresh clone/deploy has a well-formed file from the start
+regardless.
+
+Whatever's fetched is re-validated against the same rules
+`annotateMain.js` already applies to an *imported* file (only
+`"#rrggbb"`-shaped room colors; notes require numeric `x`/`y` and an icon
+from `NOTE_ICONS` or `null`) before anything renders it — since this file
+is fetched over the network and parsed as JSON at runtime, not just
+reviewed once at commit time.
+
 ## Running locally
 
 No build step, no bundler — this is plain ES modules served as static
@@ -151,22 +206,32 @@ served directly.
 
 ```
 index.html
+tools/annotate.html    — standalone room-color/note annotation tool
 styles/main.css       — oldmap's visual identity, unchanged (Jost font,
                          black 2px borders, hard offset shadows, poster
                          color accents), minus the deleted landscape toggle
+styles/annotate.css   — annotate.html's own additions on top of main.css
 data/
   rooms.geojson        — single source of truth for all room data
+  annotations.json      — published room-color overrides + notes (see
+                           "Annotations" above); safe to be empty/absent
 src/
-  mapConfig.js          — GEOJSON_PATH, CATEGORY_STYLE, categoryKey()
+  mapConfig.js          — GEOJSON_PATH, ANNOTATIONS_PATH, CATEGORY_STYLE, categoryKey()
   geoData.js             — loads/indexes the geojson, floor canonicalization
   pixelCRS.js            — CRS.Simple helpers, boundsForFeatures()
   roomLayer.js            — polygons, centroid labels, icon placement
   floorControl.js        — dynamic floor-stack button panel
   legend.js               — static category key
   search.js               — room-number search over the geojson index
-  icons.js                — subcategory/category → icon file resolution
+  icons.js                — subcategory/category → icon file resolution,
+                             NOTE_ICONS (annotate.html's icon picklist)
+  annotations.js          — fetches + validates the published overlay
+  notesLayer.js            — shared note-marker builder (annotate.html +
+                              main app's read-only rendering)
+  annotateMain.js          — tools/annotate.html's own app bootstrap
   main.js                  — app bootstrap
-icons/                  — oldmap's icon set (unused exit-arrow icons kept,
-                           see "Icons" above)
+icons/                  — oldmap's icon set (includes exit-arrow icons,
+                          now placeable via tools/annotate.html - see
+                          "Icons" above)
 assets/icon.png         — favicon/site icon
 ```

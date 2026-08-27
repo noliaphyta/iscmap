@@ -129,9 +129,18 @@ function scheduleRescale(map) {
 // layerGroup. Features with null geometry are skipped entirely - they
 // still exist for search, they just can't be drawn (see geoData.js).
 //
+// `colorOverrides` (space_id -> "#rrggbb") comes from the published
+// annotations overlay (see src/annotations.js) - when a room has one,
+// it's used as the base fill instead of styleForCategory's default. It's
+// applied once here, at polygon creation, not threaded through
+// REST_STYLE/ACTIVE_STYLE - those two only ever touch weight/fillOpacity
+// (see the constants above), so the override survives every later
+// setStyle(REST_STYLE)/setStyle(ACTIVE_STYLE) call from hover/selection
+// without needing to be re-applied.
+//
 // Returns a Map of space_id -> L.polygon so the caller can drive selection
 // (see selectRoom below) after a search result or click.
-export function renderRooms(map, layerGroup, features, { onRoomClick } = {}) {
+export function renderRooms(map, layerGroup, features, { onRoomClick, colorOverrides } = {}) {
   labelEntries = [];
   const polyById = new Map();
 
@@ -150,10 +159,11 @@ export function renderRooms(map, layerGroup, features, { onRoomClick } = {}) {
     const props = feature.properties;
     const ring = feature.geometry.coordinates[0];
     const style = styleForCategory(props.Category);
+    const fillColor = (colorOverrides && colorOverrides.get(props.space_id)) || style.fill;
 
     const polygon = L.polygon(polygonToLatLngs(ring), {
       color: strokeColor,
-      fillColor: style.fill,
+      fillColor,
       className: "room-polygon",
       // Default smoothFactor (1.0) applies Douglas-Peucker simplification
       // to keep SVG path redraws cheap at low zoom - but on notched/
