@@ -150,14 +150,37 @@ header.site-header {
   pointer-events: none;
 }
 
-/* --- header (link removed - building identity/naming is an open question,
-   see README.md) --- */
 header.site-header h1 {
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   margin: 0;
   color: var(--ink);
+}
+
+/* Cross-link between the ISC and Swem Library pages (index.html /
+   library.html), sitting next to the <h1>. header.site-header itself is
+   pointer-events: none (see above - it must not block map drag/zoom
+   underneath it), so this needs its own pointer-events: auto to stay
+   clickable. Deliberately quiet/secondary - smaller and lighter-weight
+   than the h1 - since it's a way out of the current map, not the primary
+   thing on the page. */
+header.site-header .building-switch-link {
+  pointer-events: auto;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  opacity: 0.65;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.1s ease;
+}
+
+header.site-header .building-switch-link:hover,
+header.site-header .building-switch-link:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 /* Leaflet's default zoom control sits top-left, same corner as the site
@@ -595,6 +618,18 @@ header.site-header h1 {
   header.site-header {
     padding: calc(0.75rem + env(safe-area-inset-top)) 0.7rem 0.6rem calc(0.7rem + env(safe-area-inset-left));
     gap: 0.4rem;
+  }
+
+  /* h1 + the switch-link no longer reliably fit on one line at phone
+     widths (title shrinks below, but the link doesn't have room to
+     shrink much further and still be tappable/legible) - wrap instead of
+     overflowing off the right edge of the screen. */
+  header.site-header {
+    flex-wrap: wrap;
+  }
+
+  header.site-header .building-switch-link {
+    font-size: 0.7rem;
   }
 
   header.site-header h1 {

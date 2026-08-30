@@ -1,10 +1,47 @@
 # Campus Map
 
-An interactive, floor-by-floor map of two campus buildings. Search for a
-room number to jump to it, click any room for its category and description,
-and switch floors with the elevator-style button panel in the corner. Both
-buildings render together on one shared floor stack — pick a level and you
-see both buildings' rooms for that level at once.
+Interactive, floor-by-floor maps of campus buildings, one page per site:
+
+- **`index.html`** — the ISC map, covering two buildings. Search for a room
+  number to jump to it, click any room for its category and description,
+  and switch floors with the elevator-style button panel in the corner.
+  Both buildings render together on one shared floor stack — pick a level
+  and you see both buildings' rooms for that level at once.
+- **`library.html`** — the Swem Library map, one building, six floors
+  (Penthouse, Plant, 3, 2, 1, Basement). Same search/click/floor-panel
+  interaction as the ISC page; no shared floor stack to worry about since
+  it's a single building. Its own data (`data/library.geojson`), its own
+  published-annotations file (`data/library-annotations.json`, unpublished/
+  absent until someone runs `tools/annotate.html` against it), no
+  landscape background image (see "Building-specific pieces" below).
+
+A small link in each page's header (top-left, next to the title) jumps to
+the other page.
+
+## Building-specific pieces
+
+Most of `src/` is shared, building-agnostic UI (floor buttons, search,
+legend, theme toggle, room rendering, category colors/icons) driven by
+whatever geoData module and config a given page's entrypoint script wires
+up. Two things are genuinely per-building and are NOT shared:
+
+- **Data loading/indexing** — `src/geoData.js` (ISC, two buildings
+  canonicalized onto one floor stack) vs. `src/libraryGeoData.js` (Swem,
+  one building, floor labels don't fit ISC's `...FloorN` pattern so it's
+  an explicit table instead of a regex). Each page's entrypoint
+  (`src/main.js` / `src/libraryMain.js`) imports the one it needs.
+- **The landscape background image** (`src/backgroundOverlay.js`) — its
+  `ANCHOR_X`/`ANCHOR_Y`/`SCALE` constants are tie-points calibrated
+  specifically between ISC's `assets/site-landscape.png` and ISC's
+  `rooms.geojson` pixel space. `src/libraryMain.js` doesn't call it at all
+  — there's no equivalent library landscape image yet, and reusing ISC's
+  numbers against unrelated geometry would place the image nowhere near
+  the rooms.
+
+If a third building shows up, the shared parts (info panel, theme toggle,
+search wiring, reset-view button) in `src/main.js`/`src/libraryMain.js` are
+the first candidates to factor out into one common module, rather than a
+third near-duplicate entrypoint.
 
 **Live demo:** enable GitHub Pages (see below) and it'll be at
 `https://<your-username>.github.io/<repo-name>/`

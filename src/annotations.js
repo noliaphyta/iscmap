@@ -54,9 +54,14 @@ function sanitize(parsed) {
 // everyone sees it" - a stale cached copy would quietly defeat that. The
 // file is small (room colors + notes only, not room geometry), so this
 // isn't a meaningful bandwidth concern.
-export async function loadPublishedAnnotations() {
+//
+// `path` defaults to the ISC app's own ANNOTATIONS_PATH (unchanged
+// behavior for existing callers) but can be overridden - e.g. the Swem
+// Library page (src/libraryMain.js) passes its own path so each building
+// publishes/loads a separate annotations file rather than sharing one.
+export async function loadPublishedAnnotations(path = ANNOTATIONS_PATH) {
   try {
-    const res = await fetch(ANNOTATIONS_PATH, { cache: "no-store" });
+    const res = await fetch(path, { cache: "no-store" });
     if (!res.ok) return { rooms: {}, notes: [] };
     const parsed = await res.json();
     return sanitize(parsed);
