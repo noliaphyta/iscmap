@@ -12,7 +12,7 @@ Interactive, floor-by-floor maps of campus buildings, one page per site:
   interaction as the ISC page; no shared floor stack to worry about since
   it's a single building. Its own data (`data/library.geojson`), its own
   published-annotations file (`data/library-annotations.json`, unpublished/
-  absent until someone runs `tools/annotate.html` against it), no
+  absent until someone runs `tools/annotate-library.html` against it), no
   landscape background image (see "Building-specific pieces" below).
 
 A small link in each page's header (top-left, next to the title) jumps to
@@ -96,6 +96,56 @@ site-context backdrop is wanted later, it needs a fresh image aligned to
 the geojson's bounding box — that's a new task, not something this handoff
 solves.
 
+### Swem Library floor alignment
+
+`data/library.geojson` came from `fetch_all_floors_final.py`, one
+`CREATE_SELECTION_XML` FAMIS request per floor. Unlike ISC's two
+buildings — already aligned into one shared coordinate space upstream,
+before this repo ever saw the data (see above) — nothing had aligned the
+library's six floors to each other: each one turned out to sit in a
+completely different, arbitrary region of coordinate space (e.g. Floor 1
+around x:[1021,1453], Floor 2 around x:[2,425] — not close, not even
+overlapping). Rendered as-is, switching floors either jumped the visible
+area somewhere else, or — worse, once switching floors stopped
+force-refitting the view — showed a blank map, because the new floor's
+rooms were real but entirely outside the previous floor's viewport.
+
+`tools/align_floors.py` fixes this the same way ISC's buildings were
+apparently aligned: using elevator shafts (and, here, stairwells too) as
+physical reference points, since a shaft sits at the same (x, y) on every
+floor it passes through. FAMIS's room-numbering convention makes the
+correspondence easy to find automatically — a room's floor-prefix
+character stripped off gives a physical identifier shared across floors
+(`1EL1` on Floor 1 and `3EL1` on Floor 3 are the same shaft, both reduce
+to suffix `EL1`; same for `0ST_C`/`1ST_C`/`2ST_C`/`3ST_C`/`4ST_C`/`BST_C`
+→ `ST_C`). For each floor, the script averages
+`(reference_floor_anchor − this_floor_anchor)` across every shared
+elevator/stairway suffix to get one `(dx, dy)` translation, then applies
+it to every coordinate on that floor — not just the anchors. Multiple
+anchors per floor double as a sanity check: the spread across anchors
+(printed with `--report`) came out to a few pixels on floor extents of
+roughly 500–1000 pixels, so a translate-only model (no rotation, no
+scale correction) was good enough — no need for anything fancier.
+Basement was used as the reference floor (most rooms, so most anchors);
+every other floor shared at least one elevator or stairway suffix with
+it directly. Penthouse was the one exception worth flagging: it has no
+elevator rooms of its own and only a single shared anchor (`ST_C`, one
+stairwell), so its offset has no redundancy to cross-check against — it's
+almost certainly right (the stairwell numbering convention held
+everywhere else), but if the Penthouse ever looks subtly misplaced
+relative to the floors below it, that single anchor is where to look
+first.
+
+This was a one-time, in-place transform already applied to
+`data/library.geojson` in this repo — `src/libraryMain.js` and
+`src/libraryAnnotateMain.js` both assume the six floors already share one
+coordinate space (matching `src/main.js`'s "only fit the view on the very
+first floor load" behavior, since a floor switch now naturally lands
+close to the same physical spot on screen). If `data/library.geojson` is
+ever re-fetched from FAMIS from scratch, re-run
+`python3 tools/align_floors.py data/library.geojson --write --report`
+before committing it — the raw FAMIS export is unaligned every time.
+
 ### Category colors
 
 `src/mapConfig.js`'s `CATEGORY_STYLE` palette is reused verbatim from the
@@ -171,44 +221,53 @@ deliberately left out as noise for this app's purpose.
 
 ## Annotations (published overlay)
 
-`tools/annotate.html` is a standalone authoring page for two things room
-data doesn't cover: overriding a specific room's fill color, and dropping
-freeform icon+text notes anywhere on the map (wayfinding arrows, callouts,
-temporary signage, etc.). It reuses the main app's floor stack, geojson,
-and pixel-coordinate system, but never touches `data/rooms.geojson` or the
-main app's own room polygons/`src/roomLayer.js` — it's fully additive.
+`tools/annotate.html` (ISC) and `tools/annotate-library.html` (Swem
+Library) are standalone authoring pages for two things room data doesn't
+cover: overriding a specific room's fill color, and dropping freeform
+icon+text notes anywhere on the map (wayfinding arrows, callouts,
+temporary signage, etc.). Each reuses its own page's floor stack, geojson,
+and pixel-coordinate system, but never touches `data/rooms.geojson`/
+`data/library.geojson` or that page's own room polygons/`src/roomLayer.js`
+— both are fully additive. They're entirely separate tools with separate
+localStorage drafts (`isc-map-annotations-v1` / `library-map-annotations-
+v1`) and separate published files (below) — publishing one never touches
+or overwrites the other.
 
 **Two separate copies of this data exist at any time**, and it's worth
 being clear about which is which:
 
-- **Your local draft** — everything you paint/place in `annotate.html` is
-  saved automatically to that browser's `localStorage` as you go. Nobody
-  else can see it; it's not shared or synced anywhere on its own, and it's
-  gone if you clear that browser's site data without exporting first.
-- **The published overlay** (`data/annotations.json`) — a plain JSON file
-  committed to the repo like `data/rooms.geojson` is. This is what every
+- **Your local draft** — everything you paint/place in either annotate
+  page is saved automatically to that browser's `localStorage` as you go.
+  Nobody else can see it; it's not shared or synced anywhere on its own,
+  and it's gone if you clear that browser's site data without exporting
+  first.
+- **The published overlay** (`data/annotations.json` for ISC,
+  `data/library-annotations.json` for the library) — a plain JSON file
+  committed to the repo like the room geojson is. This is what every
   visitor of the deployed site actually sees, fetched and rendered by
   `src/annotations.js` (room color overrides) and `src/notesLayer.js`
-  (notes) from `src/main.js` on every page load. It only changes when
-  someone explicitly publishes an update to it — nothing here auto-syncs
-  from anyone's local draft.
+  (notes) from `src/main.js`/`src/libraryMain.js` on every page load. It
+  only changes when someone explicitly publishes an update to it —
+  nothing here auto-syncs from anyone's local draft.
 
 ### Publishing an update
 
-1. Open `tools/annotate.html`, make your changes (colors/notes are saved
-   to your browser automatically as you go).
-2. In the "Your annotations" panel, click **Export JSON** — this downloads
-   `annotations.json` (already named to match the path below, so no
-   renaming needed).
-3. Replace `data/annotations.json` in the repo with the downloaded file.
+1. Open `tools/annotate.html` (ISC) or `tools/annotate-library.html`
+   (Swem Library), make your changes (colors/notes are saved to your
+   browser automatically as you go).
+2. In the "Your annotations" panel, click **Export JSON** — this
+   downloads `annotations.json` or `library-annotations.json`
+   respectively (already named to match the path below, so no renaming
+   needed).
+3. Replace `data/annotations.json` or `data/library-annotations.json` in
+   the repo with the downloaded file.
 4. Commit and push. GitHub Pages redeploys automatically — no build/CI
    step, same as every other change to this repo (see "Deploying" above).
    `src/annotations.js` fetches with `cache: "no-store"`, so visitors see
    the update on their very next page load rather than a stale cached
    copy.
 
-A missing or not-yet-created `data/annotations.json` isn't an error state
-— `loadPublishedAnnotations()` treats a 404 as "nothing published yet" and
+A missing or not-yet-created `data/annotations.json` / `data/library-annotations.json` isn't an error state — `loadPublishedAnnotations()` treats a 404 as "nothing published yet" and
 the map renders normally with just its default category colors and no
 notes. The committed placeholder (`{"version":1,"rooms":{},"notes":[]}`)
 exists so a fresh clone/deploy has a well-formed file from the start
@@ -242,33 +301,53 @@ served directly.
 ## File structure
 
 ```
-index.html
-tools/annotate.html    — standalone room-color/note annotation tool
+index.html               — ISC map
+library.html              — Swem Library map
+tools/annotate.html     — ISC standalone room-color/note annotation tool
+tools/annotate-library.html — Swem Library's counterpart
+tools/align_floors.py — one-time-per-refetch elevator/stairway-anchored
+                         floor alignment for library.geojson (see "Swem
+                         Library floor alignment" above)
 styles/main.css       — oldmap's visual identity, unchanged (Jost font,
                          black 2px borders, hard offset shadows, poster
                          color accents), minus the deleted landscape toggle
-styles/annotate.css   — annotate.html's own additions on top of main.css
+styles/annotate.css   — both annotate pages' own additions on top of main.css
 data/
-  rooms.geojson        — single source of truth for all room data
-  annotations.json      — published room-color overrides + notes (see
+  rooms.geojson        — single source of truth for all ISC room data
+  annotations.json      — published ISC room-color overrides + notes (see
                            "Annotations" above); safe to be empty/absent
+  library.geojson       — single source of truth for Swem Library room data
+  library-annotations.json — published library room-color overrides +
+                           notes; safe to be empty/absent
 src/
-  mapConfig.js          — GEOJSON_PATH, ANNOTATIONS_PATH, CATEGORY_STYLE, categoryKey()
-  geoData.js             — loads/indexes the geojson, floor canonicalization
+  mapConfig.js          — GEOJSON_PATH, ANNOTATIONS_PATH, CATEGORY_STYLE,
+                           categoryKey() (ISC data paths; CATEGORY_STYLE
+                           itself is shared by both buildings)
+  geoData.js             — loads/indexes rooms.geojson (ISC, two
+                            buildings), floor canonicalization
+  libraryConfig.js        — GEOJSON_PATH/ANNOTATIONS_PATH for library.geojson
+  libraryGeoData.js        — loads/indexes library.geojson (single
+                              building, explicit floor order)
   pixelCRS.js            — CRS.Simple helpers, boundsForFeatures()
   roomLayer.js            — polygons, centroid labels, icon placement
   floorControl.js        — dynamic floor-stack button panel
   legend.js               — static category key
-  search.js               — room-number search over the geojson index
+  search.js               — room-number search over a geoData module's index
   icons.js                — subcategory/category → icon file resolution,
-                             NOTE_ICONS (annotate.html's icon picklist)
-  annotations.js          — fetches + validates the published overlay
-  notesLayer.js            — shared note-marker builder (annotate.html +
-                              main app's read-only rendering)
-  annotateMain.js          — tools/annotate.html's own app bootstrap
-  main.js                  — app bootstrap
+                             NOTE_ICONS (both annotate pages' icon picklist)
+  annotations.js          — fetches + validates a published overlay (path
+                             passed in by the caller; see loadPublishedAnnotations)
+  notesLayer.js            — shared note-marker builder (both annotate
+                              pages + both main apps' read-only rendering)
+  annotateMain.js          — tools/annotate.html's own app bootstrap (ISC)
+  libraryAnnotateMain.js    — tools/annotate-library.html's own app bootstrap
+  main.js                  — ISC app bootstrap
+  libraryMain.js            — Swem Library app bootstrap
+  backgroundOverlay.js      — ISC's site-landscape.png overlay only; not
+                              used by the library page (see "Building-
+                              specific pieces" above)
 icons/                  — oldmap's icon set (includes exit-arrow icons,
-                          now placeable via tools/annotate.html - see
-                          "Icons" above)
+                          placeable via either annotate page - see "Icons"
+                          above)
 assets/icon.png         — favicon/site icon
 ```

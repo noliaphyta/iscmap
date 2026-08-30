@@ -37,14 +37,22 @@ const map = L.map("map", {
 
 const currentRoomLayerGroup = L.layerGroup().addTo(map);
 const currentNoteLayerGroup = L.layerGroup().addTo(map);
-let hasFit = false;
 let currentBounds = null;
 let currentPolyById = new Map();
 let currentFeatures = null;
 
 function updateMinZoom(bounds) {
   if (!bounds) return;
-  map.setMinZoom(map.getBoundsZoom(bounds, false));
+  // Swem's floor plans are noticeably wider (landscape) than ISC's, so a
+  // strict "zoom exactly matching the bbox" minimum left no room to
+  // breathe - the fitted view filled the screen edge-to-edge, with
+  // header/controls/legend chrome sitting directly on top of the floor
+  // plan instead of over blank margin. Knock the floor down half a zoom
+  // step (zoomSnap is 0.25, so -0.5 is two of Leaflet's own snap
+  // increments) so there's always a little headroom to zoom out beyond
+  // the initial fit, without changing what the initial fit itself shows
+  // (see the padding on fitBounds below for that).
+  map.setMinZoom(map.getBoundsZoom(bounds, false) - 0.5);
 }
 window.addEventListener("resize", () => updateMinZoom(currentBounds));
 
@@ -140,6 +148,14 @@ async function init() {
     });
   }
 
+  let hasFit = false; // only auto-fit on the very first level load - once someone
+                       // is panned/zoomed in, switching floors shouldn't reset them.
+                       // Safe now that data/library.geojson's floors are aligned
+                       // into one shared coordinate space (see tools/align_floors.py
+                       // and the elevator/stairway-shaft anchoring it's based on) -
+                       // before that alignment, every floor switch had to force a
+                       // re-fit, or the new floor's rooms rendered entirely outside
+                       // the previous floor's viewport. Matches main.js (ISC).
   function loadLevel(level) {
     const features = geo.featuresForLevel(level);
     currentFeatures = features;
@@ -147,7 +163,11 @@ async function init() {
     updateMinZoom(currentBounds);
 
     if (!hasFit && currentBounds) {
-      map.fitBounds(currentBounds);
+      // padding leaves a margin around the floor plan on the initial fit
+      // itself (rather than only on manual zoom-out, which updateMinZoom
+      // above already allows) - without it the wider library floors fit
+      // flush edge-to-edge under the header/controls/legend overlays.
+      map.fitBounds(currentBounds, { padding: [24, 24] });
       hasFit = true;
     }
 
@@ -184,7 +204,9 @@ async function init() {
   resetBtn.textContent = "RESET VIEW";
   resetBtn.setAttribute("aria-label", "Reset map view");
   resetBtn.addEventListener("click", () => {
-    if (currentBounds) map.fitBounds(currentBounds);
+    // Same padding as the initial fit (see updateMinZoom/loadLevel above)
+    // so "reset" returns to exactly the same view, not a tighter one.
+    if (currentBounds) map.fitBounds(currentBounds, { padding: [24, 24] });
   });
   document.getElementById("controls").appendChild(resetBtn);
 

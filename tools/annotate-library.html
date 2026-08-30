@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <!-- See tools/annotate.html's identical comment - this page lives one
+       directory below the project root too, so every root-relative path
+       (styles/, src/, data/library.geojson, icons/*.svg) needs the same
+       rebase. -->
+  <base href="../" />
+  <title>Swem Library Map — Annotate</title>
+
+  <link rel="icon" type="image/png" href="assets/icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <!-- Reuses the main app's variables/panel chrome (--bg/--ink/--border/
+       --shadow, .control-panel, .floor-btn, etc.) so this tool looks like
+       part of the same product, without copying any of those rules.
+       annotate.css only adds what's new for this page. Neither this file
+       nor styles/main.css is modified by this tool. -->
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/annotate.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="map"></div>
+
+    <header class="site-header">
+      <h1>SWEM LIBRARY MAP <span class="annotate-badge">ANNOTATE</span></h1>
+    </header>
+
+    <div id="controls"></div>
+
+    <div id="tools-left">
+      <div id="mode-toolbar" class="tool-panel"></div>
+      <div id="recolor-panel" class="tool-panel"></div>
+    </div>
+    <div id="data-panel" class="tool-panel"></div>
+
+    <div id="status-bar" class="status-bar"></div>
+
+    <!-- Populated/positioned by JS when painting a room or placing a note -->
+    <div id="popover" class="popover" hidden></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script type="module" src="src/libraryAnnotateMain.js"></script>
+</body>
+</html>
